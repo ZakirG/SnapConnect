@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +16,8 @@ const CameraScreen = ({ navigation }) => {
   const [type, setType] = useState('back');
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef(null);
+  const [faces, setFaces] = useState([]);
+  const [selectedFilter, setSelectedFilter] = useState('sunglasses'); // 'none', 'sunglasses'
 
   useEffect(() => {
     console.log('CameraScreen mounted, requesting permissions');
@@ -35,6 +37,18 @@ const CameraScreen = ({ navigation }) => {
   const toggleCameraType = () => {
     setType(current => (current === 'back' ? 'front' : 'back'));
   }
+
+  const handleFacesDetected = ({ faces }) => {
+    console.log('Face detection callback triggered. Faces detected:', faces.length);
+    if (faces.length > 0) {
+      console.log('First face data:', JSON.stringify(faces[0], null, 2));
+    }
+    setFaces(faces);
+  };
+
+  const toggleFilter = () => {
+    setSelectedFilter(current => current === 'none' ? 'sunglasses' : 'none');
+  };
 
   const takePicture = async () => {
     if (cameraRef.current && !isRecording) {
@@ -91,7 +105,20 @@ const CameraScreen = ({ navigation }) => {
 
   return (
     <View className="flex-1">
-      <CameraView key={type} style={{ flex: 1 }} facing={type} ref={cameraRef}>
+      <CameraView
+        key={type}
+        style={{ flex: 1 }}
+        facing={type}
+        ref={cameraRef}
+        onFacesDetected={handleFacesDetected}
+        faceDetectorSettings={{
+          mode: 'fast',
+          detectLandmarks: 'none',
+          runClassifications: 'none',
+          minDetectionInterval: 100,
+          tracking: true,
+        }}
+      >
         {/* Flip camera button (top-right) */}
         <SafeAreaView edges={['top']} className="absolute top-0 right-0 z-10 p-4">
           <Button
@@ -104,18 +131,36 @@ const CameraScreen = ({ navigation }) => {
           </Button>
         </SafeAreaView>
 
-        {/* Capture button – moved up and styled as ring */}
+        {/* Capture button and filter selector */}
         <View className="absolute bottom-36 w-full items-center">
-          <TouchableOpacity
-            onPress={takePicture}
-            onLongPress={startRecording}
-            onPressOut={stopRecording}
-            activeOpacity={0.8}
-            className="w-[70px] h-[70px] items-center justify-center"
-          >
-            {/* Ring design with transparent center like Snapchat */}
-            <View className="w-[66px] h-[66px] rounded-full border-[6px] border-white bg-transparent" />
-          </TouchableOpacity>
+          <View className="flex-row items-center space-x-6">
+            {/* Filter selector button */}
+            <TouchableOpacity
+              onPress={toggleFilter}
+              activeOpacity={0.8}
+              className="w-[50px] h-[50px] items-center justify-center"
+            >
+              <View className="w-[46px] h-[46px] rounded-full border-4 border-white/70 bg-black/20 items-center justify-center">
+                {selectedFilter === 'sunglasses' ? (
+                  <Text className="text-white text-xs font-bold">👓</Text>
+                ) : (
+                  <Ionicons name="close" size={20} color="white" />
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Capture button */}
+            <TouchableOpacity
+              onPress={takePicture}
+              onLongPress={startRecording}
+              onPressOut={stopRecording}
+              activeOpacity={0.8}
+              className="w-[70px] h-[70px] items-center justify-center"
+            >
+              {/* Ring design with transparent center like Snapchat */}
+              <View className="w-[66px] h-[66px] rounded-full border-[6px] border-white bg-transparent" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Recording indicator */}
@@ -146,6 +191,50 @@ const CameraScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </SafeAreaView>
+        </View>
+
+        {/* AR Filter Overlays */}
+        {selectedFilter === 'sunglasses' && faces.map((face, index) => {
+          // expo-camera provides bounds and basic face info
+          const { bounds } = face;
+          if (!bounds) return null;
+
+          // Calculate sunglasses position based on face bounds
+          const faceWidth = bounds.size.width;
+          const faceHeight = bounds.size.height;
+          const centerX = bounds.origin.x + faceWidth / 2;
+          const eyeY = bounds.origin.y + faceHeight * 0.35; // Eyes are roughly 35% down from top
+
+          const sunglassesWidth = faceWidth * 0.8;
+          const sunglassesHeight = sunglassesWidth * 0.4;
+
+          return (
+            <Image
+              key={face.faceID ?? `face-${index}`}
+              source={require('../../../assets/ar_filters/sunglasses.png')}
+              style={{
+                position: 'absolute',
+                left: centerX - sunglassesWidth / 2,
+                top: eyeY - sunglassesHeight / 2,
+                width: sunglassesWidth,
+                height: sunglassesHeight,
+                resizeMode: 'contain',
+              }}
+            />
+          );
+        })}
+
+        {/* Debug info */}
+        <View className="absolute top-16 left-4 bg-black/70 p-3 rounded-lg">
+          <Text className="text-white text-xs">
+            Camera: {type} | Faces: {faces.length}
+          </Text>
+          <Text className="text-white text-xs">
+            Filter: {selectedFilter}
+          </Text>
+          <Text className="text-white text-xs">
+            Detection: {faces.length > 0 ? '✅ Working' : '❌ No faces'}
+          </Text>
         </View>
       </CameraView>
     </View>
