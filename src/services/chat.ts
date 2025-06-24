@@ -153,7 +153,7 @@ export async function getMessages(conversationId: string): Promise<ChatMessage[]
     .from('messages')
     .select('*')
     .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to get messages: ${error.message}`);
@@ -163,21 +163,22 @@ export async function getMessages(conversationId: string): Promise<ChatMessage[]
 }
 
 /**
- * Subscribes to real-time message updates for the given conversation.
+ * Subscribes to real-time message updates for a conversation.
+ * It immediately fetches the latest messages (descending order) and then
+ * listens for new INSERTs in that conversation, refetching on every change.
  *
- * @param {string} conversationId - The conversation ID.
- * @param {(messages: ChatMessage[]) => void} callback - Invoked with the
- *        updated list of messages whenever new messages are added.
- * @returns {RealtimeChannel} The subscription channel. Call `.unsubscribe()` to stop listening.
+ * @param {string}   conversationId
+ * @param {(msgs: ChatMessage[]) => void} callback – Receives the updated list.
+ * @returns {RealtimeChannel}
  */
 export function subscribeToMessages(
   conversationId: string,
   callback: (messages: ChatMessage[]) => void
 ): RealtimeChannel {
-  // Get initial messages
+  // Initial fetch
   getMessages(conversationId).then(callback);
 
-  // Subscribe to new messages
+  // Subscribe to new inserts
   const channel = supabase
     .channel(`messages:${conversationId}`)
     .on(
@@ -189,7 +190,6 @@ export function subscribeToMessages(
         filter: `conversation_id=eq.${conversationId}`,
       },
       () => {
-        // Refetch all messages when a new one is added
         getMessages(conversationId).then(callback);
       }
     )
@@ -200,4 +200,4 @@ export function subscribeToMessages(
 
 export async function ensureConversation(userIdA: string, userIdB: string): Promise<string> {
   return getOrCreateConversation(userIdA, userIdB);
-} 
+}

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../store/user';
 import { subscribeToMessages, sendMessageBetweenUsers, ensureConversation } from '../../services/chat';
 import { supabase } from '../../services/supabase/config';
+import { ChatBubble } from '../../components/chat';
 
 /**
  * ConversationScreen
@@ -31,6 +32,15 @@ const ConversationScreen = ({ route, navigation }) => {
         channelRef = subscribeToMessages(convId, (msgs) => {
           setMessages(msgs);
 
+          // Ensure newest message is visible (FlatList is inverted → offset 0 == bottom)
+          setTimeout(() => {
+            try {
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            } catch (_) {
+              /* no-op */
+            }
+          }, 0);
+
           // Mark messages from friend as opened
           const unseen = msgs.filter((m) => m.sender_id === friendId && !m.expires_at);
           unseen.forEach((m) => {
@@ -56,6 +66,18 @@ const ConversationScreen = ({ route, navigation }) => {
     try {
       await sendMessageBetweenUsers(user.id, friendId, user.id, input.trim());
       setInput('');
+      // Optimistically refresh messages list (subscription may take ~100-200 ms)
+      // but this guarantees we see our own message instantly.
+      (async () => {
+        try {
+          const convId = await ensureConversation(user.id, friendId);
+          const { getMessages } = await import('../../services/chat');
+          const latest = await getMessages(convId);
+          setMessages(latest);
+        } catch (_) {
+          /* ignore */
+        }
+      })();
     } catch (err) {
       console.error('Send message error', err);
     }
@@ -63,13 +85,7 @@ const ConversationScreen = ({ route, navigation }) => {
 
   const renderItem = ({ item }) => {
     const isMe = item.sender_id === user.id;
-    return (
-      <View className={`px-4 mb-2 w-full ${isMe ? 'items-end' : 'items-start'}`}>
-        <View className={`px-3 py-2 rounded-xl ${isMe ? 'bg-blue-500' : 'bg-gray-200'}`}>
-          <Text className={`${isMe ? 'text-white' : 'text-black'}`}>{item.text}</Text>
-        </View>
-      </View>
-    );
+    return <ChatBubble text={item.text} isMe={isMe} createdAt={item.created_at} />;
   };
 
   return (
