@@ -104,62 +104,49 @@ const CameraScreen = ({ navigation }) => {
           </Button>
         </SafeAreaView>
 
-        {/* Capture button – raised above bottom nav */}
-        <View className="absolute bottom-32 w-full items-center">
-          <Button
-            variant="circular"
-            size="large"
+        {/* Capture button – moved up and styled as ring */}
+        <View className="absolute bottom-36 w-full items-center">
+          <TouchableOpacity
             onPress={takePicture}
             onLongPress={startRecording}
             onPressOut={stopRecording}
-            style={{ width: 80, height: 80 }}
+            activeOpacity={0.8}
+            className="w-[70px] h-[70px] items-center justify-center"
           >
-            <View className="w-6 h-6 rounded-full border-2 border-gray-600" />
-          </Button>
+            {/* Ring design with transparent center like Snapchat */}
+            <View className="w-[66px] h-[66px] rounded-full border-[6px] border-white bg-transparent" />
+          </TouchableOpacity>
         </View>
 
         {/* Recording indicator */}
         {isRecording && (
-          <View className="absolute top-16 left-1/2 -ml-1.5 w-3 h-3 bg-red-500 rounded-full" />
+          <View className="absolute top-20 left-1/2 -ml-1.5 w-3 h-3 bg-red-500 rounded-full" />
         )}
 
-        {/* Bottom navigation */}
-        <SafeAreaView
-          edges={['bottom']}
-          className="absolute bottom-0 w-full p-4"
-        >
-          <View className="flex-row items-center justify-between bg-neuro-bg/80 rounded-3xl p-4 shadow-neuro-outset">
-            {/* Messages */}
-            <Button
-              variant="circular"
-              size="medium"
-              onPress={() => navigation.navigate('Chat')}
-              style={{ width: 48, height: 48 }}
-            >
-              <Ionicons name="chatbubble-outline" size={24} color="#374151" />
-            </Button>
+        {/* Bottom navigation - flush with screen edges */}
+        <View className="absolute bottom-0 left-0 right-0">
+          <SafeAreaView
+            edges={['bottom']}
+            className="bg-black/20 backdrop-blur-sm"
+          >
+            <View className="flex-row items-center justify-around py-4 px-6">
+              {/* Messages */}
+              <TouchableOpacity onPress={() => navigation.navigate('Chat')} className="p-2">
+                <Ionicons name="chatbubble-outline" size={24} color="white" />
+              </TouchableOpacity>
 
-            {/* Camera (current) */}
-            <Button
-              variant="circular"
-              size="medium"
-              onPress={() => {}}
-              style={{ width: 48, height: 48 }}
-            >
-              <Ionicons name="camera" size={28} color="#374151" />
-            </Button>
+              {/* Camera (current) */}
+              <TouchableOpacity onPress={() => {}} activeOpacity={1} className="p-2">
+                <Ionicons name="camera" size={28} color="white" />
+              </TouchableOpacity>
 
-            {/* Friends / Stories */}
-            <Button
-              variant="circular"
-              size="medium"
-              onPress={() => navigation.navigate('Stories')}
-              style={{ width: 48, height: 48 }}
-            >
-              <Ionicons name="people-outline" size={24} color="#374151" />
-            </Button>
-          </View>
-        </SafeAreaView>
+              {/* Friends / Stories */}
+              <TouchableOpacity onPress={() => navigation.navigate('Stories')} className="p-2">
+                <Ionicons name="people-outline" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </View>
       </CameraView>
     </View>
   );
