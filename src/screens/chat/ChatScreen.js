@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useUserStore } from '../../store/user';
+import { getFriends, PublicUser } from '../../services/friends';
 
 /**
  * Chat screen displaying conversations with friends and family
@@ -19,112 +21,40 @@ import { Ionicons } from '@expo/vector-icons';
  */
 const ChatScreen = ({ navigation }) => {
   const [showNotificationBanner, setShowNotificationBanner] = useState(true);
-  
-     // Mock chat data with boring Smith family names
-   const chatData = [
-     {
-       id: '1',
-       name: 'My AI',
-       avatar: null,
-       status: 'Send me a Snap',
-       statusType: 'suggestion',
-       hasCamera: true,
-       isSpecial: true
-     },
-     {
-       id: '2',
-       name: 'John Smith',
-       avatar: null,
-       status: 'Received',
-       statusType: 'received',
-       hasCamera: true,
-       isRed: true
-     },
-     {
-       id: '3',
-       name: 'Mary Smith',
-       avatar: null,
-       status: 'Received',
-       statusType: 'received',
-       hasCamera: true,
-       isRed: true
-     },
-     {
-       id: '4',
-       name: 'Bob Smith',
-       avatar: null,
-       status: 'Opened • 182w',
-       statusType: 'opened',
-       hasCamera: true,
-       isBlue: true
-     },
-     {
-       id: '5',
-       name: 'Susan Smith',
-       avatar: null,
-       status: 'Tap to chat',
-       statusType: 'chat',
-       hasCamera: true
-     },
-     {
-       id: '6',
-       name: 'David Smith',
-       avatar: null,
-       status: 'Tap to chat',
-       statusType: 'chat',
-       hasCamera: true
-     },
-     {
-       id: '7',
-       name: 'Linda Smith',
-       avatar: null,
-       status: 'Tap to chat',
-       statusType: 'chat',
-       hasCamera: true
-     },
-     {
-       id: '8',
-       name: 'James Smith',
-       avatar: null,
-       status: 'Tap to chat',
-       statusType: 'chat',
-       hasCamera: true
-     },
-     {
-       id: '9',
-       name: 'Patricia Smith',
-       avatar: null,
-       status: 'Received',
-       statusType: 'received',
-       hasCamera: true,
-       isPurple: true
-     },
-     {
-       id: '10',
-       name: 'Michael Smith',
-       avatar: null,
-       status: 'Double tap to reply',
-       statusType: 'reply',
-       hasCamera: true,
-       isRed: true
-     },
-     {
-       id: '11',
-       name: 'Karen Smith',
-       avatar: null,
-       status: 'Received • 345w',
-       statusType: 'received-old',
-       hasCamera: true,
-       isBlue: true
-     }
-   ];
+  const [chatData, setChatData] = useState([]);
+  const { user } = useUserStore();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchChats = async () => {
+      try {
+        const friends = await getFriends(user.id);
+
+        const chats = friends.map((friend) => ({
+          id: friend.id,
+          name: friend.username,
+          avatar: null,
+          status: 'Tap to chat',
+          statusType: 'chat',
+          hasCamera: true,
+        }));
+
+        setChatData(chats);
+      } catch (err) {
+        console.error('Error building chat list', err);
+      }
+    };
+
+    fetchChats();
+  }, [user]);
 
   /**
    * Handles opening a chat conversation
    * @param {object} chat - The chat object
    */
   const handleChatPress = (chat) => {
-    Alert.alert('Chat', `Opening chat with ${chat.name}`);
+    navigation.navigate('Conversation', { friendId: chat.id, friendUsername: chat.name });
   };
 
   /**
@@ -143,25 +73,19 @@ const ChatScreen = ({ navigation }) => {
   const getStatusIcon = (chat) => {
     switch (chat.statusType) {
       case 'received':
-        return (
-          <View className={`w-4 h-4 rounded-sm mr-2 ${chat.isRed ? 'bg-red-500' : chat.isPurple ? 'bg-purple-500' : 'bg-red-500'}`} />
-        );
+        return <View className="w-3 h-3 rounded-sm bg-red-500 mr-2" />;
+      case 'sent':
+        return <View className="w-3 h-3 rounded-sm bg-blue-500 mr-2" />;
       case 'opened':
-        return (
-          <Ionicons name="play" size={14} color="#3B82F6" style={{ marginRight: 8 }} />
-        );
+        return <View className="w-3 h-3 rounded-sm bg-blue-500 mr-2" />;
       case 'received-old':
-        return (
-          <View className="w-4 h-4 rounded-sm bg-blue-500 mr-2" />
-        );
+        return <View className="w-3 h-3 rounded-sm bg-blue-500 mr-2" />;
       case 'chat':
         return (
           <Ionicons name="chatbubble-outline" size={14} color="#9CA3AF" style={{ marginRight: 8 }} />
         );
       case 'reply':
-        return (
-          <View className="w-4 h-4 rounded-sm bg-red-500 mr-2" />
-        );
+        return <View className="w-3 h-3 rounded-sm bg-red-500 mr-2" />;
       default:
         return null;
     }
@@ -172,60 +96,56 @@ const ChatScreen = ({ navigation }) => {
    * @param {object} chat - The chat object
    * @returns {React.ReactElement}
    */
-     const renderChatItem = (chat) => (
-     <TouchableOpacity
-       key={chat.id}
-       onPress={() => handleChatPress(chat)}
-       className="flex-row items-center justify-between px-4 py-3 bg-white"
-       activeOpacity={0.7}
-     >
-       <View className="flex-row items-center flex-1">
-         <View className="w-12 h-12 rounded-full bg-gray-300 items-center justify-center">
-           {chat.isSpecial ? (
-             <Ionicons name="sparkles" size={24} color="#4A90E2" />
-           ) : (
-             <Ionicons name="person" size={24} color="#9CA3AF" />
-           )}
-         </View>
-         <View className="ml-3 flex-1">
-           <Text className="text-black font-semibold text-base">{chat.name}</Text>
-           <View className="flex-row items-center mt-1">
-             {getStatusIcon(chat)}
-             <Text className={`text-sm ${
-               chat.statusType === 'suggestion' ? 'text-gray-600' :
-               chat.statusType === 'chat' ? 'text-gray-500' :
-               'text-gray-600'
-             }`}>
-               {chat.status}
-             </Text>
-           </View>
-         </View>
-       </View>
-       
-       {chat.hasCamera && (
-         <TouchableOpacity
-           onPress={() => handleCameraPress(chat)}
-           className="p-2"
-         >
-           <Ionicons name="camera" size={24} color="#9CA3AF" />
-         </TouchableOpacity>
-       )}
-     </TouchableOpacity>
-   );
+  const renderChatItem = (chat) => (
+    <TouchableOpacity
+      key={chat.id}
+      onPress={() => handleChatPress(chat)}
+      className="flex-row items-center justify-between px-4 py-3 bg-white"
+      activeOpacity={0.7}
+    >
+      <View className="flex-row items-center flex-1">
+        <View className="w-12 h-12 rounded-full bg-gray-300 items-center justify-center">
+          <Ionicons name="person" size={24} color="#9CA3AF" />
+        </View>
+        <View className="ml-3 flex-1">
+          <Text className="text-black font-semibold text-base">{chat.name}</Text>
+          <View className="flex-row items-center mt-1">
+            {getStatusIcon(chat)}
+            <Text className={`text-sm ${
+              chat.statusType === 'suggestion' ? 'text-gray-600' :
+              chat.statusType === 'chat' ? 'text-gray-500' :
+              'text-gray-600'
+            }`}>
+              {chat.status}
+            </Text>
+          </View>
+        </View>
+      </View>
+      
+      {chat.hasCamera && (
+        <TouchableOpacity
+          onPress={() => handleCameraPress(chat)}
+          className="p-2"
+        >
+          <Ionicons name="camera" size={24} color="#9CA3AF" />
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-             <View className="flex-row items-center justify-between px-4 py-3 bg-white">
-         <View className="flex-row items-center">
-           <View className="w-8 h-8 rounded-full bg-yellow-400 items-center justify-center mr-3">
-             <Ionicons name="person" size={16} color="black" />
-           </View>
-           <TouchableOpacity>
-             <Ionicons name="search" size={24} color="black" />
-           </TouchableOpacity>
-         </View>
-        
+      <View className="flex-row items-center justify-between px-4 py-3 bg-white">
+        <View className="flex-row items-center">
+          <View className="w-8 h-8 rounded-full bg-yellow-400 items-center justify-center mr-3">
+            <Ionicons name="person" size={16} color="black" />
+          </View>
+          <TouchableOpacity>
+            <Ionicons name="search" size={24} color="black" />
+          </TouchableOpacity>
+        </View>
+      
         <Text className="text-xl font-semibold text-black">Chat</Text>
         
         <View className="flex-row items-center space-x-3">

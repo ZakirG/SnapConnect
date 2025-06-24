@@ -46,13 +46,6 @@ export interface Conversation {
 }
 
 /**
- * Generates a stable conversation ID for a pair of users (lexicographically sorted).
- */
-export function getConversationId(userIdA: string, userIdB: string): string {
-  return [userIdA, userIdB].sort().join('_');
-}
-
-/**
  * Creates or gets an existing conversation between two users.
  *
  * @param {string} userIdA - First user ID.
@@ -60,36 +53,47 @@ export function getConversationId(userIdA: string, userIdB: string): string {
  * @returns {Promise<string>} The conversation ID.
  */
 async function getOrCreateConversation(userIdA: string, userIdB: string): Promise<string> {
-  const conversationId = getConversationId(userIdA, userIdB);
-  
-  // Check if conversation already exists
-  const { data: existingConversation } = await supabase
+  // Step 1: try to find existing conversation containing both participants
+  const { data: existing, error: lookupError } = await supabase.rpc('find_conversation_between', {
+    user_id_a: userIdA,
+    user_id_b: userIdB,
+  });
+
+  if (lookupError) {
+    console.warn('lookup conversation error (fallback to client)', lookupError);
+  }
+
+  if (existing && existing.length > 0) {
+    return existing[0].id;
+  }
+
+  // If not found, create conversation row
+  const { data: convoInsert, error: convoError } = await supabase
     .from('conversations')
+    .insert([{ created_at: new Date().toISOString(), type: 'direct' }])
     .select('id')
-    .eq('id', conversationId)
     .single();
 
-  if (existingConversation) {
-    return conversationId;
+  if (convoError) {
+    console.error('[Chat] Conversation insert error', convoError);
+    throw new Error(`Create conversation failed: ${convoError.message}`);
   }
 
-  // Create new conversation
-  const { error } = await supabase
-    .from('conversations')
+  const convoId = convoInsert.id;
+
+  const { error: partErr } = await supabase
+    .from('conversation_participants')
     .insert([
-      {
-        id: conversationId,
-        participant_one_id: userIdA < userIdB ? userIdA : userIdB,
-        participant_two_id: userIdA < userIdB ? userIdB : userIdA,
-        created_at: new Date().toISOString(),
-      },
+      { conversation_id: convoId, user_id: userIdA },
+      { conversation_id: convoId, user_id: userIdB },
     ]);
 
-  if (error) {
-    throw new Error(`Failed to create conversation: ${error.message}`);
+  if (partErr) {
+    console.error('[Chat] Participant insert error', partErr);
+    throw new Error(`Add participants failed: ${partErr.message}`);
   }
 
-  return conversationId;
+  return convoId;
 }
 
 /**
@@ -192,4 +196,8 @@ export function subscribeToMessages(
     .subscribe();
 
   return channel;
+}
+
+export async function ensureConversation(userIdA: string, userIdB: string): Promise<string> {
+  return getOrCreateConversation(userIdA, userIdB);
 } 

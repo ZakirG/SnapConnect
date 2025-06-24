@@ -39,6 +39,33 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 console.log('✅ Supabase client created successfully');
 
+// ────────────────────────────────────────────────────────────────
+// Debug diagnostics: confirm which Supabase project / database we
+// are connected to and print Postgres version information. This
+// helps ensure we are operating against the expected backend.
+// ────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    // 1. Print the REST endpoint in use (includes project ref)
+    // Example: https://abcd1234.supabase.co/rest/v1
+    // eslint-disable-next-line no-console
+    console.log('🔗 Supabase REST endpoint:', supabaseUrl + '/rest/v1');
+
+    // 2. Attempt to retrieve server version via a lightweight SQL call.
+    //    We use the internal /rpc Execute SQL function if enabled; if not,
+    //    we simply ignore the failure.
+    const { data, error } = await supabase.rpc('pgsql_version');
+
+    if (error) {
+      console.warn('⚠️  pgsql_version RPC not found or no permission – skipping version print');
+    } else if (data) {
+      console.log('🗄️  Postgres version:', data);
+    }
+  } catch (err) {
+    console.error('❌ Debug connection check failed:', err);
+  }
+})();
+
 // Test the connection
 supabase.auth.getSession().then(({ data, error }) => {
   if (error) {

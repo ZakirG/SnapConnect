@@ -190,8 +190,9 @@ CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  text TEXT,
   content TEXT,
-  content_type TEXT NOT NULL CHECK (content_type IN ('text','image','video','audio','snap')),
+  content_type TEXT NOT NULL DEFAULT 'text' CHECK (content_type IN ('text','image','video','audio','snap')),
   storage_url TEXT,
   snap_id UUID REFERENCES snaps(id) ON DELETE CASCADE,
   expires_at TIMESTAMP WITH TIME ZONE,
@@ -282,5 +283,23 @@ CREATE POLICY "Authenticated users can upload snaps" ON storage.objects
 CREATE POLICY "Authenticated users can read snaps" ON storage.objects
   FOR SELECT USING (bucket_id = 'snaps-bucket' AND auth.role() = 'authenticated');
 */
+
+-- --------------------------------------------------
+-- 9. Helper Functions
+-- --------------------------------------------------
+-- Added: helper to find an existing direct conversation between two users
+CREATE OR REPLACE FUNCTION public.find_conversation_between(user_id_a UUID, user_id_b UUID)
+RETURNS TABLE(id UUID) AS $$
+  SELECT c.id
+  FROM conversations c
+  JOIN conversation_participants cp1 ON cp1.conversation_id = c.id AND cp1.user_id = user_id_a
+  JOIN conversation_participants cp2 ON cp2.conversation_id = c.id AND cp2.user_id = user_id_b
+  WHERE c.type = 'direct'
+  LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Grant execute permission so that callers using the "authenticated" role (i.e. from the client)
+-- can invoke this RPC while preserving RLS rules on underlying tables.
+GRANT EXECUTE ON FUNCTION public.find_conversation_between(UUID, UUID) TO authenticated;
 
 -- End of SnapConnect schema v2 

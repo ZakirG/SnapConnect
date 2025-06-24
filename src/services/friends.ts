@@ -176,36 +176,41 @@ export async function denyFriendRequest(currentUser: User, requesterId: string):
  * @returns {Promise<PublicUser[]>}
  */
 export async function getFriends(userId: string): Promise<PublicUser[]> {
-  const { data, error } = await supabase
+  // Step 1: fetch friendship rows
+  const { data: friendshipRows, error: friendshipError } = await supabase
     .from('friendships')
-    .select(`
-      user_id,
-      friend_id,
-      profiles!inner(id, username, avatar_url)
-    `)
+    .select('user_id, friend_id')
     .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
     .eq('status', 'accepted');
 
-  if (error) {
-    throw new Error(`Failed to get friends: ${error.message}`);
+  if (friendshipError) {
+    throw new Error(`Failed to get friendships: ${friendshipError.message}`);
+  }
+
+  if (!friendshipRows || friendshipRows.length === 0) return [];
+
+  // Collect friend IDs (the other participant in each row)
+  const friendIds = friendshipRows.map((row: any) =>
+    row.user_id === userId ? row.friend_id : row.user_id
+  );
+
+  // Step 2: fetch profiles for those IDs
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url')
+    .in('id', friendIds);
+
+  if (profilesError) {
+    throw new Error(`Failed to fetch friend profiles: ${profilesError.message}`);
   }
 
   return (
-    data?.map((item: any) => {
-      const profile = item.profiles;
-      // Determine the friend user (not current user)
-      const friendId = item.user_id === userId ? item.friend_id : item.user_id;
-      if (friendId !== profile.id) {
-        // Alignment mismatch – skip
-        return null;
-      }
-      return {
-        id: profile.id,
-        username: profile.username,
-        avatar_url: profile.avatar_url,
-      } as PublicUser;
-    }) || []
-  ).filter(Boolean);
+    profiles?.map((p: any) => ({
+      id: p.id,
+      username: p.username,
+      avatar_url: p.avatar_url,
+    })) || []
+  );
 }
 
 /**
