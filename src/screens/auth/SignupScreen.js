@@ -88,7 +88,14 @@ const SignupScreen = ({ navigation }) => {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
-        <Button title={isLoading ? 'Creating Account...' : 'Sign Up'} onPress={handleSignup} style={{ marginBottom: 20 }} disabled={isLoading} />
+        <Button
+          title={isLoading ? 'Creating Account...' : 'Sign Up'}
+          size="large"
+          variant="primary"
+          onPress={handleSignup}
+          disabled={isLoading}
+          style={{ marginBottom: 20, width: '100%' }}
+        />
         <Text className="text-center">
           Already have an account?{' '}
           <Text className="text-accent-primary" onPress={() => navigation.navigate('Login')}>

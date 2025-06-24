@@ -93,20 +93,29 @@ const CameraScreen = ({ navigation }) => {
     <View className="flex-1">
       <CameraView key={type} style={{ flex: 1 }} facing={type} ref={cameraRef}>
         {/* Flip camera button (top-right) */}
-        <View className="absolute top-12 right-6 z-10">
-          <TouchableOpacity onPress={toggleCameraType}>
-            <Ionicons name="camera-reverse-outline" size={28} color="white" />
-          </TouchableOpacity>
-        </View>
+        <SafeAreaView edges={['top']} className="absolute top-0 right-0 z-10 p-4">
+          <Button
+            variant="circular"
+            size="medium"
+            onPress={toggleCameraType}
+            style={{ width: 48, height: 48 }}
+          >
+            <Ionicons name="camera-reverse-outline" size={24} color="#374151" />
+          </Button>
+        </SafeAreaView>
 
         {/* Capture button – raised above bottom nav */}
         <View className="absolute bottom-32 w-full items-center">
           <Button
+            variant="circular"
+            size="large"
             onPress={takePicture}
             onLongPress={startRecording}
             onPressOut={stopRecording}
-            style={{ width: 80, height: 80, borderRadius: 40 }}
-          />
+            style={{ width: 80, height: 80 }}
+          >
+            <View className="w-6 h-6 rounded-full border-2 border-gray-600" />
+          </Button>
         </View>
 
         {/* Recording indicator */}
@@ -117,23 +126,38 @@ const CameraScreen = ({ navigation }) => {
         {/* Bottom navigation */}
         <SafeAreaView
           edges={['bottom']}
-          className="absolute bottom-0 w-full px-10 pb-4"
+          className="absolute bottom-0 w-full p-4"
         >
-          <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center justify-between bg-neuro-bg/80 rounded-3xl p-4 shadow-neuro-outset">
             {/* Messages */}
-            <TouchableOpacity onPress={() => navigation.navigate('Chat')}>
-              <Ionicons name="chatbubble-outline" size={28} color="white" />
-            </TouchableOpacity>
+            <Button
+              variant="circular"
+              size="medium"
+              onPress={() => navigation.navigate('Chat')}
+              style={{ width: 48, height: 48 }}
+            >
+              <Ionicons name="chatbubble-outline" size={24} color="#374151" />
+            </Button>
 
             {/* Camera (current) */}
-            <TouchableOpacity onPress={() => {}} activeOpacity={1}>
-              <Ionicons name="camera" size={32} color="white" />
-            </TouchableOpacity>
+            <Button
+              variant="circular"
+              size="medium"
+              onPress={() => {}}
+              style={{ width: 48, height: 48 }}
+            >
+              <Ionicons name="camera" size={28} color="#374151" />
+            </Button>
 
             {/* Friends / Stories */}
-            <TouchableOpacity onPress={() => navigation.navigate('Stories')}>
-              <Ionicons name="people-outline" size={28} color="white" />
-            </TouchableOpacity>
+            <Button
+              variant="circular"
+              size="medium"
+              onPress={() => navigation.navigate('Stories')}
+              style={{ width: 48, height: 48 }}
+            >
+              <Ionicons name="people-outline" size={24} color="#374151" />
+            </Button>
           </View>
         </SafeAreaView>
       </CameraView>

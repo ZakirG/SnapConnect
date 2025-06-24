@@ -28,7 +28,13 @@ const ProfileScreen = () => {
 
   return (
     <View className="flex-1 justify-center items-center bg-background p-4">
-      <Button title="Logout" onPress={handleLogout} />
+      <Button
+        title="Logout"
+        size="large"
+        variant="primary"
+        onPress={handleLogout}
+        style={{ width: '100%' }}
+      />
     </View>
   );
 };

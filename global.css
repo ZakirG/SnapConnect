@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* Neumorphic Design System Colors - Following ui_rules.md */
+:root {
+  --background-primary: #f0f0f3;
+  --background-secondary: #e6e6e9;
+  --shadow-light: rgba(255, 255, 255, 0.7);
+  --shadow-dark: rgba(0, 0, 0, 0.1);
+}
+
+/* Global background for neumorphic design */
+body {
+  background-color: var(--background-primary);
+} 

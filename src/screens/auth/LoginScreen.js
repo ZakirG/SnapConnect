@@ -58,7 +58,14 @@ const LoginScreen = ({ navigation }) => {
           value={password}
           onChangeText={setPassword}
         />
-        <Button title={isLoading ? 'Logging in...' : 'Login'} onPress={handleLogin} style={{ marginBottom: 20 }} disabled={isLoading} />
+        <Button
+          title={isLoading ? 'Logging in...' : 'Login'}
+          size="large"
+          variant="primary"
+          onPress={handleLogin}
+          disabled={isLoading}
+          style={{ marginBottom: 20, width: '100%' }}
+        />
         <Text className="text-center">
           Don't have an account?{' '}
           <Text className="text-accent-primary" onPress={() => navigation.navigate('Signup')}>

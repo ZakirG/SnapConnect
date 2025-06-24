@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from '../../store/user';
 import { getFriends } from '../../services/friends';
 import { sendSnap } from '../../services/snaps';
+import { Button } from '../../components/neumorphic';
 
 const SendToScreen = ({ route, navigation }) => {
   const { mediaUri, mediaType = 'image', photoUri } = route.params;
@@ -74,20 +75,29 @@ const SendToScreen = ({ route, navigation }) => {
   return (
     <View className="flex-1 bg-background">
       {/* Header */}
-      <SafeAreaView edges={['top']} className="bg-background px-6 pt-4 pb-2">
-        <View className="flex-row items-center justify-between">
+      <SafeAreaView edges={['top']} className="bg-background p-4">
+        <View className="flex-row items-center justify-between mb-2">
           {/* Back button */}
-          <TouchableOpacity onPress={() => navigation.goBack()} className="pr-4">
-            <Text className="text-lg font-bold text-primary">Back</Text>
-          </TouchableOpacity>
+          <Button
+            title="Back"
+            size="medium"
+            variant="primary"
+            onPress={() => navigation.goBack()}
+            style={{ minWidth: 80 }}
+          />
 
           {/* Title */}
-          <Text className="text-2xl font-bold flex-1 text-center">Send To</Text>
+          <Text className="text-2xl font-bold flex-1 text-center text-gray-800">Send To</Text>
 
           {/* Send button */}
-          <TouchableOpacity onPress={handleSend} disabled={selected.size === 0 || isSending} className="pl-4">
-            <Text className={`text-lg font-bold ${selected.size === 0 ? 'text-gray-400' : 'text-primary'}`}>Send</Text>
-          </TouchableOpacity>
+          <Button
+            title={isSending ? "Sending..." : "Send"}
+            size="medium"
+            variant="secondary"
+            onPress={handleSend}
+            disabled={selected.size === 0 || isSending}
+            style={{ minWidth: 80 }}
+          />
         </View>
       </SafeAreaView>
 
