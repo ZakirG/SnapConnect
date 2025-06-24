@@ -1,258 +1,35 @@
-# SnapConnect 📸
+# SnapConnect
 
-A modern ephemeral messaging platform built with React Native, featuring neumorphic design and real-time communication. SnapConnect delivers the core Snapchat experience with a unique tactile interface design.
+A lightweight Snapchat-style app built with React Native + Expo and Supabase.
 
-## 🚀 Features
+## ✨ Features
+- Capture photos / videos with AR filters
+- Send snaps to friends & post 24-hour Stories
+- Real-time chat (Supabase Realtime)
+- Secure Auth (Supabase Email / OAuth)
 
-### Core Functionality
-- **Ephemeral Messaging**: Disappearing photos, videos, and messages
-- **Real-time Communication**: Instant message delivery and synchronization
-- **Stories**: 24-hour ephemeral content sharing
-- **Camera Integration**: Photo/video capture with AR filters
-- **Friend Management**: Add and manage connections
-- **Group Chats**: Multi-participant conversations
-
-### Design Philosophy
-- **Neumorphic UI**: Soft, tactile interfaces with subtle shadows and highlights
-- **Mobile-First**: Optimized for touch interactions and mobile devices
-- **Ephemeral Nature**: Content disappears after viewing or time expiration
-- **Real-time Performance**: Instant synchronization across devices
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **React Native** - Cross-platform mobile development
-- **Expo SDK 53** - Development platform and tools
-- **NativeWind** - Tailwind CSS for React Native styling
-- **Zustand** - Lightweight state management
-
-### Backend & Services
-- **Supabase Auth** - Email/password & OAuth authentication
-- **Supabase Postgres** - Relational database with row-level security
-- **Supabase Storage** - Media storage (images, videos, snaps)
-- **Realtime** - Supabase Realtime for chats & presence
-- **Expo Push Notifications** - Device notifications
-
-### Key Libraries
-- `@supabase/supabase-js` – Client SDK
-- `expo-camera` – Camera functionality and permissions
-- `react-native-gesture-handler` – Touch interactions and gestures
-- `react-native-reanimated` – Smooth animations and AR effects
-
-## 📱 User Experience
-
-### Authentication Flow
-1. **Sign Up**: Create account with email/phone verification
-2. **Log In**: Secure authentication with optional 2FA
-3. **Permissions**: Grant camera, microphone, and contacts access
-4. **Profile Setup**: Customize username and avatar
-
-### Core User Journey
-1. **Camera Screen**: Main hub for content creation
-2. **Snap Creation**: Capture photos/videos with AR filters
-3. **Content Editing**: Add text, drawings, stickers, and effects
-4. **Sharing**: Send to friends, groups, or post to Stories
-5. **Chat & Stories**: Real-time messaging and ephemeral content
-
-## 🎨 Design System
-
-### Neumorphic Principles
-- **Depth Through Light**: Subtle shadows and highlights create tactile feel
-- **Soft Edges**: Rounded corners and organic shapes
-- **Tactile Feedback**: Visual feedback for all interactions
-- **Consistent Shadows**: Uniform shadow values across components
-
-### Color Palette
-- **Primary Background**: Soft neutral gray (#f0f0f3)
-- **Secondary Background**: Slightly darker gray (#e6e6e9)
-- **Light Shadows**: White with low opacity (rgba(255,255,255,0.7))
-- **Dark Shadows**: Soft gray with low opacity (rgba(0,0,0,0.1))
-
-### Component Guidelines
-- **Buttons**: Neumorphic styling with outset/inset shadows
-- **Cards**: Elevated containers with subtle shadows
-- **Input Fields**: Inset styling to appear "pressed in"
-- **Navigation**: Consistent elevation and active states
-
-## 🏗️ Project Structure
-
-```
-SnapConnect/
-├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── ui/             # Base UI components
-│   │   ├── neumorphic/     # Neumorphic design components
-│   │   ├── camera/         # Camera-related components
-│   │   ├── chat/           # Chat interface components
-│   │   └── stories/        # Stories components
-│   ├── screens/            # Screen components
-│   │   ├── auth/           # Authentication screens
-│   │   ├── camera/         # Camera and editing screens
-│   │   ├── chat/           # Chat and messaging screens
-│   │   └── social/         # Stories and social screens
-│   ├── services/           # API and external services
-│   │   ├── firebase/       # Firebase integrations
-│   │   └── api/            # API services
-│   ├── hooks/              # Custom React hooks
-│   ├── store/              # Zustand state management
-│   ├── utils/              # Utility functions
-│   ├── styles/             # Design system and styling
-│   └── types/              # TypeScript definitions
-├── assets/                 # Images, icons, and static assets
-├── _docs/                  # Project documentation
-│   └── phases/             # Development phase documentation
-└── ui-references/          # Design reference images
-```
-
-## 🚀 Getting Started
-
-Follow these steps to get a local development environment running in minutes.
-
-### Prerequisites
-
-1. **Node.js** (v18 or higher)
-2. **npm** (v9 or higher) – comes with Node, or use **yarn pnpm** if you prefer
-3. **Expo CLI** – if you don't have it globally:
-
-   ```bash
-   npm install -g expo-cli   # optional – we use npx in the commands below
-   ```
-
-4. A device or emulator:
-
-   • iOS – Xcode + Simulator (macOS) or Expo Go on your iPhone
-   • Android – Android Studio + Emulator or Expo Go on your Android phone
-
-### Install & Run
-
+## ⚡ Quick Start
 ```bash
-# 1. Clone the repo
+# 1. Clone & install
 git clone https://github.com/your-org/snapconnect.git
 cd SnapConnect
+npm install
 
-# 2. Install JavaScript dependencies
-npm install       # or: yarn install / pnpm install
+# 2. Configure env
+cp .env.example .env   # then add your keys
 
-# 3. Install iOS/Android native deps (only if you plan to run a native build)
-#    npx expo prebuild        # optional – not required for Expo Go
-
-# 4. Start the Metro bundler, clearing any previous cache
+# 3. Run the dev server (clears Metro cache)
 npx expo start --clear
-
-# 5. Open the project
-#    • Press "i" to launch iOS Simulator
-#    • Press "a" to launch Android emulator
-#    • Or scan the QR code with Expo Go on your device
 ```
+On the Expo CLI screen:
+- press `i` for iOS Simulator
+- press `a` for Android emulator
+- or scan the QR code with Expo Go.
 
-That's it — Metro will compile and serve the app. Changes you make in the code will hot-reload automatically.
-
-### Environment Variables
-
-Create a `.env` file in the project root and fill in the following keys:
-
+## 🔑 Environment Variables (./.env)
 ```env
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_public_anon_key
 ```
 
-### Supabase Security & Policies
-The repository includes SQL snippets (`src/services/supabase/schema.sql`) that create tables and storage buckets with row-level security (RLS) policies. After provisioning your Supabase project, run those scripts in the SQL editor, or use the provided `SUPABASE_MIGRATION.md` guide.
-
-## 📋 Development Phases
-
-The project follows an iterative development approach with four phases:
-
-1. **Phase 1: Setup** - Foundation and UI/UX (2-3 weeks)
-2. **Phase 2: MVP** - Core authentication and camera (3-4 weeks)
-3. **Phase 3: Enhanced** - Real-time messaging and Stories (4-5 weeks)
-4. **Phase 4: Polished** - Advanced features and optimization (5-6 weeks)
-
-See `_docs/phases/` for detailed phase documentation.
-
-## 🧪 Testing
-
-### Testing Strategy
-- **Unit Tests**: Component and utility function testing
-- **Integration Tests**: Firebase and API integration testing
-- **E2E Tests**: User flow testing with Detox
-- **Performance Tests**: App performance and Firebase usage monitoring
-
-### Running Tests
-```bash
-# Unit tests
-npm test
-
-# E2E tests
-npm run test:e2e
-
-# Performance tests
-npm run test:performance
-```
-
-## 📦 Deployment
-
-### Development
-- Expo Go for rapid development and testing
-- Firebase development project
-- Local development with hot reloading
-
-### Staging
-- EAS Build for testing on physical devices
-- Firebase staging project
-- Beta testing with limited users
-
-### Production
-- App Store and Google Play deployment
-- Firebase production project
-- Monitoring and analytics implementation
-
-## 🔧 Configuration
-
-### Environment Variables
-Create a `.env` file in the root directory:
-```env
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_ANON_KEY=your_public_anon_key
-```
-
-### Supabase Security & Policies
-The repository includes SQL snippets (`src/services/supabase/schema.sql`) that create tables and storage buckets with row-level security (RLS) policies. After provisioning your Supabase project, run those scripts in the SQL editor, or use the provided `SUPABASE_MIGRATION.md` guide.
-
-## 🤝 Contributing
-
-### Development Guidelines
-1. Follow the neumorphic design principles
-2. Maintain consistent code style and structure
-3. Write comprehensive tests for new features
-4. Document API changes and new components
-5. Follow the established folder structure
-
-### Code Style
-- Use TypeScript for type safety
-- Follow React Native best practices
-- Implement proper error handling
-- Use meaningful variable and function names
-- Add comments for complex logic
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Expo** for the development platform
-- **Firebase** for backend services
-- **React Native** community for tools and libraries
-- **Neumorphic Design** community for design inspiration
-
-## 📞 Support
-
-For questions, issues, or contributions:
-- Create an issue in the repository
-- Review the documentation in `_docs/`
-- Check the development phase guides
-
----
-
-**SnapConnect** - Where ephemeral moments meet tactile design ✨ 
+Supabase tables & storage policies are in `src/services/supabase/schema.sql` – run them once in the SQL editor after creating your project. 
