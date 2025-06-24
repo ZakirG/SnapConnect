@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../store/user';
 import { subscribeToMessages, sendMessageBetweenUsers, ensureConversation } from '../../services/chat';
@@ -16,8 +16,10 @@ import { ChatBubble } from '../../components/chat';
 const ConversationScreen = ({ route, navigation }) => {
   const { friendId, friendUsername } = route.params;
   const { user } = useUserStore();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef(null);
 
   // Ensure conversation and subscribe to messages
@@ -60,6 +62,17 @@ const ConversationScreen = ({ route, navigation }) => {
       if (channelRef) channelRef.unsubscribe();
     };
   }, [user, friendId]);
+
+  // Listen to keyboard show/hide to adjust bottom padding
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -109,8 +122,15 @@ const ConversationScreen = ({ route, navigation }) => {
       />
 
       {/* Input */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-        <SafeAreaView edges={['bottom']} className="flex-row items-center px-4 py-2 border-t border-gray-200 bg-white">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+      >
+        <SafeAreaView
+          edges={['left', 'right']}
+          style={{ paddingBottom: keyboardVisible ? 0 : insets.bottom }}
+          className="flex-row items-center px-4 py-2 border-t border-gray-200 bg-white"
+        >
           <TouchableOpacity className="p-2 mr-2">
             <Ionicons name="camera" size={24} color="#9CA3AF" />
           </TouchableOpacity>

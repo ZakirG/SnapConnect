@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -220,7 +220,7 @@ const CameraScreen = ({ navigation }) => {
           </SafeAreaView>
         </View>
 
-        {/* AR Filter Overlays */}
+        {/* AR Filter Overlays – dynamic positioning when faces detected */}
         {selectedFilter === 'sunglasses' && faces.map((face, index) => {
           // expo-camera provides bounds and basic face info
           const { bounds } = face;
@@ -250,6 +250,23 @@ const CameraScreen = ({ navigation }) => {
             />
           );
         })}
+
+        {/* AR Filter fallback – show overlay even without a face */}
+        {selectedFilter === 'sunglasses' && faces.length === 0 && (
+          <Image
+            source={require('../../../assets/ar_filters/sunglasses.png')}
+            style={{
+              position: 'absolute',
+              // 2.5× previous scale → 1.5× screen width; adjust to keep centred
+              width: Dimensions.get('window').width * 1.5,
+              height: Dimensions.get('window').width * 0.6, // preserves 0.4 ratio * 1.5
+              left: -Dimensions.get('window').width * 0.25, // centre horizontally
+              top: Dimensions.get('window').height * 0.35,
+              resizeMode: 'contain',
+              opacity: 0.9,
+            }}
+          />
+        )}
 
         {/* Debug info moved further down to avoid profile icon */}
         <View className="absolute top-40 left-4 bg-black/70 p-3 rounded-lg">
