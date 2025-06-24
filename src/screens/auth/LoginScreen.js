@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { Card, Input, Button } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
  * A placeholder screen for user login.
@@ -96,44 +97,50 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 justify-center items-center bg-background p-4">
-      <Card>
-        <Text className="text-2xl font-bold mb-8 text-center">Login</Text>
-        <Input
-          placeholder="Email"
-          style={{ marginBottom: 20 }}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-          autoCorrect={false}
-        />
-        <Input
-          placeholder="Password"
-          secureTextEntry
-          style={{ marginBottom: 20 }}
-          value={password}
-          onChangeText={setPassword}
-          autoComplete="current-password"
-          textContentType="password"
-        />
-        <Button
-          title={isLoading ? 'Logging in...' : 'Login'}
-          size="large"
-          variant="primary"
-          onPress={handleLogin}
-          disabled={isLoading}
-          style={{ marginBottom: 20, width: '100%' }}
-        />
-        <Text className="text-center">
-          Don't have an account?{' '}
-          <Text className="text-accent-primary" onPress={() => navigation.navigate('Signup')}>
-            Sign Up
+    <View className="flex-1 bg-background">
+      {/* Central content */}
+      <View className="flex-1 justify-center items-center px-4">
+        {/* App Title */}
+        <Text className="text-4xl font-extrabold text-gray-900 mb-6">SnapConnect</Text>
+
+        {/* Login Card */}
+        <Card>
+          <Input
+            placeholder="Email"
+            style={{ marginBottom: 20 }}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCorrect={false}
+          />
+          <Input
+            placeholder="Password"
+            secureTextEntry
+            style={{ marginBottom: 20 }}
+            value={password}
+            onChangeText={setPassword}
+            autoComplete="current-password"
+            textContentType="password"
+          />
+          <Button
+            title={isLoading ? 'Logging in...' : 'Login'}
+            size="large"
+            variant="primary"
+            onPress={handleLogin}
+            disabled={isLoading}
+            style={{ marginBottom: 20, width: '100%' }}
+          />
+          <Text className="text-center">
+            Don't have an account?{' '}
+            <Text className="text-accent-primary" onPress={() => navigation.navigate('Signup')}>
+              Sign Up
+            </Text>
           </Text>
-        </Text>
-      </Card>
+        </Card>
+      </View>
     </View>
   );
 };
