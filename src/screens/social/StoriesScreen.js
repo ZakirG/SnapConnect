@@ -76,9 +76,9 @@ const StoriesScreen = ({ navigation }) => {
           onLoad={() => console.log('[StoryItem] image loaded', item.storageUrl)}
         />
       </View>
-      {/* Name */}
-      <Text className="text-xs mt-1 max-w-[64px] text-center text-gray-800" numberOfLines={1}>
-        {item.username}
+      {/* Name with (you) annotation if story is from current user */}
+      <Text className="text-xs mt-1 w-20 text-center text-gray-800 leading-snug">
+        {item.userId === user?.id ? `${item.username} (you)` : item.username}
       </Text>
     </TouchableOpacity>
   );
