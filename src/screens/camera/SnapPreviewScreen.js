@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, ImageBackground, TouchableOpacity, Text } from 'react-native';
+import { View, ImageBackground, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Video } from 'expo-av';
 import { Button } from '../../components/neumorphic';
 import { Ionicons } from '@expo/vector-icons';
+import { postStory } from '../../services/stories';
+import { useUserStore } from '../../store/user';
+import { useState } from 'react';
 
 /**
  * A screen to display the captured photo full-screen.
@@ -15,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
  * @returns {React.ReactElement}
  */
 const SnapPreviewScreen = ({ route, navigation }) => {
+  const { user } = useUserStore();
+  const [isPosting, setIsPosting] = useState(false);
   const {
     mediaUri: paramMediaUri,
     mediaType: paramMediaType,
@@ -62,8 +67,36 @@ const SnapPreviewScreen = ({ route, navigation }) => {
           </Button>
         </View>
 
-        {/* Bottom section with Send To button */}
-        <View className="flex-row justify-end">
+        {/* Bottom section with Send To & Post Story buttons */}
+        <View className="flex-row justify-end space-x-4">
+          {/* Post to Story */}
+          <Button
+            size="large"
+            variant="primary"
+            disabled={isPosting}
+            onPress={async () => {
+              if (!user) return;
+              try {
+                setIsPosting(true);
+                await postStory(user.id, mediaUri, mediaType);
+                navigation.navigate('Stories');
+              } catch (err) {
+                console.warn('Failed to post story', err);
+              } finally {
+                setIsPosting(false);
+              }
+            }}
+            style={{ minWidth: 170 }}
+          >
+            <View className="flex-row items-center">
+              <Text className="text-lg font-bold text-purple-800 mr-1">
+                {isPosting ? 'Posting…' : 'Post Story'}
+              </Text>
+              <Ionicons name="add-circle" size={20} color="#6d28d9" />
+            </View>
+          </Button>
+
+          {/* Send To */}
           <Button
             size="large"
             variant="secondary"

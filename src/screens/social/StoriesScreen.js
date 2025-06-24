@@ -1,7 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { getStoriesForUser } from '../../services/stories';
+import { useUserStore } from '../../store/user';
 
 /**
  * A placeholder screen for the stories view.
@@ -9,63 +12,75 @@ import { Ionicons } from '@expo/vector-icons';
  * @returns {React.ReactElement}
  */
 const StoriesScreen = ({ navigation }) => {
-  /** -------------------------------------------------------------------
-   * MOCK DATA – list of friend stories. Replace with real API data later.
-   * ------------------------------------------------------------------- */
-  const mockStories = [
-    {
-      id: '1',
-      name: 'Slime',
-      avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-    },
-    {
-      id: '2',
-      name: 'Weel',
-      avatar: 'https://randomuser.me/api/portraits/men/45.jpg',
-    },
-    {
-      id: '3',
-      name: 'Tythegemi…',
-      avatar: 'https://randomuser.me/api/portraits/men/52.jpg',
-    },
-    {
-      id: '4',
-      name: 'Joseph',
-      avatar: 'https://randomuser.me/api/portraits/men/63.jpg',
-    },
-    {
-      id: '5',
-      name: 'Tina',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    },
-  ];
+  const { user } = useUserStore();
+  const [stories, setStories] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch stories whenever screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      let isActive = true;
+      const fetchStories = async () => {
+        try {
+          setLoading(true);
+          const data = await getStoriesForUser(user.id);
+          console.log('[StoriesScreen] fetched stories', data);
+          if (isActive) setStories(data);
+          // Debug fetch first story URL status
+          if (data.length) {
+            try {
+              const resp = await fetch(data[0].storageUrl, { method: 'GET' });
+              console.log('[StoriesScreen] test fetch status', resp.status, resp.ok);
+              const len = resp.headers.get('content-length');
+              console.log('[StoriesScreen] content-length', len);
+            } catch (netErr) {
+              console.warn('[StoriesScreen] test fetch network error', netErr);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch stories', err);
+        } finally {
+          if (isActive) setLoading(false);
+        }
+      };
+      fetchStories();
+      return () => {
+        isActive = false;
+      };
+    }, [user])
+  );
 
   /** -------------------------------------------------------------------
-   * Renders a single circular story avatar with a purple ring and a small
-   * "add" icon overlay – visually matching Snapchat's style.
+   * Renders a single circular story avatar with a purple ring.
    *
    * @param {object} props
    * @param {{ id: string; name: string; avatar: string }} props.item – story data
    * @returns {React.ReactElement}
    * ------------------------------------------------------------------- */
   const StoryItem = ({ item }) => (
-    <View className="items-center mr-4">
+    <TouchableOpacity
+      className="items-center mr-4"
+      onPress={() => navigation.navigate('StoryViewer', {
+        storageUrl: item.storageUrl,
+        mediaType: item.mediaType,
+        username: item.username,
+      })}
+    >
       {/* Avatar with purple ring */}
       <View className="relative">
         <Image
-          source={{ uri: item.avatar }}
+          source={{ uri: item.storageUrl }}
           className="w-16 h-16 rounded-full border-2 border-purple-600"
+          onError={(e) => console.warn('[StoryItem] image load error', item.storageUrl, e.nativeEvent.error)}
+          onLoad={() => console.log('[StoryItem] image loaded', item.storageUrl)}
         />
-        {/* Small "+" icon overlay */}
-        <View className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-600 items-center justify-center">
-          <Ionicons name="add" size={12} color="white" />
-        </View>
       </View>
       {/* Name */}
       <Text className="text-xs mt-1 max-w-[64px] text-center text-gray-800" numberOfLines={1}>
-        {item.name}
+        {item.username}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -112,9 +127,11 @@ const StoriesScreen = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
         >
-          {mockStories.map((s) => (
-            <StoryItem key={s.id} item={s} />
-          ))}
+          {loading ? (
+            <ActivityIndicator className="mr-4" />
+          ) : (
+            stories.map((story) => <StoryItem key={story.id} item={story} />)
+          )}
         </ScrollView>
       </View>
 
