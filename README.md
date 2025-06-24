@@ -106,46 +106,57 @@ SnapConnect/
 
 ## 🚀 Getting Started
 
+Follow these steps to get a local development environment running in minutes.
+
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
-- Expo CLI
-- iOS Simulator (macOS) or Android Emulator
 
-### Installation
+1. **Node.js** (v18 or higher)
+2. **npm** (v9 or higher) – comes with Node, or use **yarn pnpm** if you prefer
+3. **Expo CLI** – if you don't have it globally:
 
-1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd SnapConnect
+   npm install -g expo-cli   # optional – we use npx in the commands below
    ```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+4. A device or emulator:
 
-3. **Configure Firebase**
-   - Create a Firebase project
-   - Add configuration to `src/services/firebase/config.ts`
-   - Enable Authentication, Firestore, Storage, and Realtime Database
+   • iOS – Xcode + Simulator (macOS) or Expo Go on your iPhone
+   • Android – Android Studio + Emulator or Expo Go on your Android phone
 
-4. **Start development server**
-   ```bash
-   npm start
-   ```
+### Install & Run
 
-5. **Run on device/simulator**
-   ```bash
-   # iOS
-   npm run ios
-   
-   # Android
-   npm run android
-   
-   # Web (limited functionality)
-   npm run web
-   ```
+```bash
+# 1. Clone the repo
+git clone https://github.com/your-org/snapconnect.git
+cd SnapConnect
+
+# 2. Install JavaScript dependencies
+npm install       # or: yarn install / pnpm install
+
+# 3. Install iOS/Android native deps (only if you plan to run a native build)
+#    npx expo prebuild        # optional – not required for Expo Go
+
+# 4. Start the Metro bundler, clearing any previous cache
+npx expo start --clear
+
+# 5. Open the project
+#    • Press "i" to launch iOS Simulator
+#    • Press "a" to launch Android emulator
+#    • Or scan the QR code with Expo Go on your device
+```
+
+That's it — Metro will compile and serve the app. Changes you make in the code will hot-reload automatically.
+
+### Environment Variables
+
+Create a `.env` (or copy `.env.example`) in the project root and fill in the following keys:
+
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+```
+
+> NOTE: We switched from Firebase to Supabase. The old Firebase section has been removed.
 
 ## 📋 Development Phases
 
