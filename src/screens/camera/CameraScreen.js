@@ -56,6 +56,8 @@ const CameraScreen = ({ navigation }) => {
   };
 
   const selectFilter = (key) => {
+    // Immediately hide any existing overlay before re-render with new filter
+    setFaces([]);
     setSelectedFilter(key);
   };
 
@@ -276,7 +278,7 @@ const CameraScreen = ({ navigation }) => {
 
           return (
             <Image
-              key={face.faceID ?? `face-${index}`}
+              key={`${selectedFilter}-${face.faceID ?? `face-${index}`}`}
               source={src}
               style={{
                 position: 'absolute',
@@ -308,6 +310,7 @@ const CameraScreen = ({ navigation }) => {
           }
           return (
             <Image
+              key={`fallback-${selectedFilter}`}
               source={src}
               style={{
                 position: 'absolute',
