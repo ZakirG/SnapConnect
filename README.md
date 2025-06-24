@@ -27,17 +27,17 @@ A modern ephemeral messaging platform built with React Native, featuring neumorp
 - **Zustand** - Lightweight state management
 
 ### Backend & Services
-- **Firebase Authentication** - User authentication and security
-- **Firebase Firestore** - NoSQL database for user data
-- **Firebase Storage** - Media file storage and management
-- **Firebase Realtime Database** - Real-time messaging and synchronization
-- **Expo Push Notifications** - Real-time notifications
+- **Supabase Auth** - Email/password & OAuth authentication
+- **Supabase Postgres** - Relational database with row-level security
+- **Supabase Storage** - Media storage (images, videos, snaps)
+- **Realtime** - Supabase Realtime for chats & presence
+- **Expo Push Notifications** - Device notifications
 
 ### Key Libraries
-- `expo-camera` - Camera functionality and permissions
-- `react-native-gesture-handler` - Touch interactions and gestures
-- `react-native-reanimated` - Smooth animations and AR effects
-- `expo-contacts` - Contact integration and friend discovery
+- `@supabase/supabase-js` – Client SDK
+- `expo-camera` – Camera functionality and permissions
+- `react-native-gesture-handler` – Touch interactions and gestures
+- `react-native-reanimated` – Smooth animations and AR effects
 
 ## 📱 User Experience
 
@@ -149,14 +149,15 @@ That's it — Metro will compile and serve the app. Changes you make in the code
 
 ### Environment Variables
 
-Create a `.env` (or copy `.env.example`) in the project root and fill in the following keys:
+Create a `.env` file in the project root and fill in the following keys:
 
 ```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_public_anon_key
 ```
 
-> NOTE: We switched from Firebase to Supabase. The old Firebase section has been removed.
+### Supabase Security & Policies
+The repository includes SQL snippets (`src/services/supabase/schema.sql`) that create tables and storage buckets with row-level security (RLS) policies. After provisioning your Supabase project, run those scripts in the SQL editor, or use the provided `SUPABASE_MIGRATION.md` guide.
 
 ## 📋 Development Phases
 
@@ -211,20 +212,12 @@ npm run test:performance
 ### Environment Variables
 Create a `.env` file in the root directory:
 ```env
-FIREBASE_API_KEY=your_api_key
-FIREBASE_AUTH_DOMAIN=your_auth_domain
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_STORAGE_BUCKET=your_storage_bucket
-FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-FIREBASE_APP_ID=your_app_id
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_public_anon_key
 ```
 
-### Firebase Security Rules
-Ensure proper security rules are configured for:
-- User authentication and authorization
-- Data access permissions
-- Media file upload restrictions
-- Real-time database access control
+### Supabase Security & Policies
+The repository includes SQL snippets (`src/services/supabase/schema.sql`) that create tables and storage buckets with row-level security (RLS) policies. After provisioning your Supabase project, run those scripts in the SQL editor, or use the provided `SUPABASE_MIGRATION.md` guide.
 
 ## 🤝 Contributing
 
