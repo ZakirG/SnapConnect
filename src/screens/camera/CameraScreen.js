@@ -119,16 +119,29 @@ const CameraScreen = ({ navigation }) => {
           tracking: true,
         }}
       >
-        {/* Flip camera button (top-right) */}
+        {/* Top-right buttons */}
         <SafeAreaView edges={['top']} className="absolute top-0 right-0 z-10 p-4">
-          <Button
-            variant="circular"
-            size="medium"
-            onPress={toggleCameraType}
-            style={{ width: 48, height: 48 }}
-          >
-            <Ionicons name="camera-reverse-outline" size={24} color="#374151" />
-          </Button>
+          <View className="flex-row" style={{ gap: 12 }}>
+            {/* Add Friends button */}
+            <Button
+              variant="circular"
+              size="medium"
+              onPress={() => navigation.navigate('AddFriends')}
+              style={{ width: 48, height: 48 }}
+            >
+              <Ionicons name="person-add-outline" size={24} color="#374151" />
+            </Button>
+            
+            {/* Flip camera button */}
+            <Button
+              variant="circular"
+              size="medium"
+              onPress={toggleCameraType}
+              style={{ width: 48, height: 48 }}
+            >
+              <Ionicons name="camera-reverse-outline" size={24} color="#374151" />
+            </Button>
+          </View>
         </SafeAreaView>
 
         {/* Capture button and filter selector */}

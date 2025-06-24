@@ -5,7 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen, SignupScreen } from './src/screens/auth';
 import { CameraScreen, SnapPreviewScreen, SendToScreen } from './src/screens/camera';
 import { ChatScreen } from './src/screens/chat';
-import { StoriesScreen, ProfileScreen } from './src/screens/social';
+import { StoriesScreen, ProfileScreen, AddFriendsScreen } from './src/screens/social';
 import { useUserStore } from './src/store/user';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './src/services/firebase/config';
@@ -28,6 +28,7 @@ const MainNavigator = () => (
     <MainStack.Screen name="Chat" component={ChatScreen} />
     <MainStack.Screen name="Stories" component={StoriesScreen} />
     <MainStack.Screen name="Profile" component={ProfileScreen} />
+    <MainStack.Screen name="AddFriends" component={AddFriendsScreen} />
   </MainStack.Navigator>
 );
 
