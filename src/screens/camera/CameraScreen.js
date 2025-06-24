@@ -52,9 +52,9 @@ const CameraScreen = ({ navigation }) => {
 
   return (
     <View className="flex-1">
-      <CameraView style={{ flex: 1 }} facing={type} ref={cameraRef}>
+      <CameraView key={type} style={{ flex: 1 }} facing={type} ref={cameraRef}>
         <View className="flex-1 bg-transparent flex-col justify-between m-8">
-          <TouchableOpacity className="self-end items-center bg-transparent" onPress={toggleCameraType}>
+          <TouchableOpacity className="self-end items-center bg-transparent mt-12" onPress={toggleCameraType}>
             <Text className="text-lg font-bold text-white">Flip</Text>
           </TouchableOpacity>
           <View className="items-center">
