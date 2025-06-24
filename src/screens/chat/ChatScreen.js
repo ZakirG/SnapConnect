@@ -264,28 +264,26 @@ const ChatScreen = ({ navigation }) => {
         {chatData.map(renderChatItem)}
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View className="flex-row items-center justify-around py-3 px-6 bg-white border-t border-gray-200">
-        <TouchableOpacity onPress={() => {}} className="p-2">
-          <Ionicons name="location" size={24} color="#9CA3AF" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity onPress={() => {}} className="p-2">
-          <Ionicons name="chatbubble" size={24} color="black" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity onPress={() => navigation.navigate('Camera')} className="p-2">
-          <Ionicons name="camera" size={28} color="#9CA3AF" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity onPress={() => navigation.navigate('Stories')} className="p-2">
-          <Ionicons name="people" size={24} color="#9CA3AF" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity onPress={() => {}} className="p-2 relative">
-          <Ionicons name="play" size={24} color="#9CA3AF" />
-          <View className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
-        </TouchableOpacity>
+      {/* Bottom Navigation - consistent with Camera screen */}
+      <View className="absolute bottom-0 left-0 right-0">
+        <SafeAreaView edges={['bottom']} className="bg-black/20 backdrop-blur-sm">
+          <View className="flex-row items-center justify-around py-4 px-6">
+            {/* Messages (current) */}
+            <TouchableOpacity onPress={() => {}} activeOpacity={1} className="p-2">
+              <Ionicons name="chatbubble" size={24} color="white" />
+            </TouchableOpacity>
+
+            {/* Camera */}
+            <TouchableOpacity onPress={() => navigation.navigate('Camera')} className="p-2">
+              <Ionicons name="camera" size={28} color="white" />
+            </TouchableOpacity>
+
+            {/* Friends / Stories */}
+            <TouchableOpacity onPress={() => navigation.navigate('Stories')} className="p-2">
+              <Ionicons name="people-outline" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
     </SafeAreaView>
   );

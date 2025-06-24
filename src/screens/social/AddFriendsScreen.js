@@ -16,7 +16,9 @@ import {
   sendFriendRequest,
   getIncomingFriendRequests,
   acceptFriendRequest,
+  denyFriendRequest,
 } from '../../services/friends';
+import { supabase } from '../../services/supabase/config';
 
 /**
  * Screen for adding friends, displaying friend requests, and finding contacts
@@ -31,6 +33,7 @@ const AddFriendsScreen = ({ navigation }) => {
   const [friendRequests, setFriendRequests] = useState([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingRequests, setLoadingRequests] = useState(true);
+  const [sentRequests, setSentRequests] = useState([]);
 
   const { user } = useUserStore();
 
@@ -57,6 +60,28 @@ const AddFriendsScreen = ({ navigation }) => {
     // Optional: set up polling every 30s
     const intervalId = setInterval(loadRequests, 30_000);
     return () => clearInterval(intervalId);
+  }, [user]);
+
+  // Prefetch any pending requests we previously sent
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchSent = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('friend_requests')
+          .select('recipient_id')
+          .eq('requester_id', user.id)
+          .eq('status', 'pending');
+        if (!error && data) {
+          setSentRequests(data.map((d) => d.recipient_id));
+        }
+      } catch (e) {
+        console.error('Error fetching sent requests', e);
+      }
+    };
+
+    fetchSent();
   }, [user]);
 
   // Search profiles by username
@@ -112,6 +137,7 @@ const AddFriendsScreen = ({ navigation }) => {
     try {
       if (!user) throw new Error('Not authenticated');
       await sendFriendRequest(user, recipientId);
+      setSentRequests((prev) => [...prev, recipientId]);
       Alert.alert('Friend Request', 'Friend request sent!');
     } catch (err) {
       Alert.alert('Error', err.message);
@@ -120,10 +146,28 @@ const AddFriendsScreen = ({ navigation }) => {
 
   /**
    * Handles dismissing a friend request or suggestion
-   * @param {string} userId - The ID of the user to dismiss
+   * @param {string} requesterId - The ID of the user to dismiss
    */
-  const handleDismiss = (userId) => {
-    Alert.alert('Dismissed', 'User dismissed from suggestions');
+  const handleDismiss = async (requesterId) => {
+    try {
+      if (!user) throw new Error('Not authenticated');
+
+      // If the requesterId is in friendRequests list, deny it
+      const isRequest = friendRequests.some((fr) => fr.requester_id === requesterId);
+
+      if (isRequest) {
+        await denyFriendRequest(user, requesterId);
+        setFriendRequests((prev) => prev.filter((fr) => fr.requester_id !== requesterId));
+      }
+
+      // Also remove from searchResults/sentRequests just in case
+      setSearchResults((prev) => prev.filter((u) => u.id !== requesterId));
+      setSentRequests((prev) => prev.filter((id) => id !== requesterId));
+
+      Alert.alert('Dismissed', 'Friend request dismissed');
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    }
   };
 
   /**
@@ -154,7 +198,7 @@ const AddFriendsScreen = ({ navigation }) => {
           <Text className="text-black font-semibold ml-1">Accept</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => handleDismiss(req.id)}
+          onPress={() => handleDismiss(req.requester_id)}
           className="p-2"
         >
           <Ionicons name="close" size={20} color="#9CA3AF" />
@@ -168,7 +212,10 @@ const AddFriendsScreen = ({ navigation }) => {
    * @param {object} user - The user object
    * @returns {React.ReactElement}
    */
-  const renderSuggestedFriend = (user) => (
+  const renderSuggestedFriend = (user) => {
+    const alreadySent = sentRequests.includes(user.id);
+
+    return (
     <View key={user.id} className="flex-row items-center justify-between px-4 py-3">
       <View className="flex-row items-center flex-1">
         <View className="relative">
@@ -183,21 +230,22 @@ const AddFriendsScreen = ({ navigation }) => {
       </View>
       <View className="flex-row items-center space-x-2">
         <TouchableOpacity
-          onPress={() => handleAddFriend(user.id)}
-          className="bg-yellow-400 px-4 py-2 rounded-full flex-row items-center"
+          disabled={alreadySent}
+          onPress={() => !alreadySent && handleAddFriend(user.id)}
+          className={`px-4 py-2 rounded-full flex-row items-center ${alreadySent ? 'bg-green-500' : 'bg-yellow-400'}`}
         >
-          <Ionicons name="person-add" size={16} color="black" />
-          <Text className="text-black font-semibold ml-1">Add</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleDismiss(user.id)}
-          className="p-2"
-        >
-          <Ionicons name="close" size={20} color="#9CA3AF" />
+          {alreadySent ? (
+            <Ionicons name="checkmark" size={16} color="white" />
+          ) : (
+            <Ionicons name="person-add" size={16} color="black" />
+          )}
+          <Text className="font-semibold ml-1" style={{ color: alreadySent ? 'white' : 'black' }}>
+            {alreadySent ? 'Request sent' : 'Add'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
-  );
+  );};
 
   // Debounce helper
   function useDebouncedValue(value, delay = 400) {
@@ -246,9 +294,6 @@ const AddFriendsScreen = ({ navigation }) => {
           <View className="mb-6">
             <Text className="text-black font-semibold text-lg px-4 mb-3">Added Me</Text>
             {friendRequests.map(renderFriendRequest)}
-            <TouchableOpacity className="items-center py-3">
-              <Text className="text-gray-600 font-medium">View 7 More</Text>
-            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -269,7 +314,7 @@ const AddFriendsScreen = ({ navigation }) => {
         {/* Empty state message */}
         {!debouncedSearch && friendRequests.length === 0 && searchResults.length === 0 && !loadingRequests && (
           <View className="items-center mt-8">
-            <Text style={{ color: '#9CA3AF' }}>You haven't added any friends yet</Text>
+            <Text style={{ color: '#9CA3AF' }}>You have no pending friend requests</Text>
           </View>
         )}
       </ScrollView>

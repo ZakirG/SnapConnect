@@ -4,6 +4,7 @@ import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useUserStore } from '../../store/user';
 
 /**
  * A screen that displays the camera view, allowing users to take photos.
@@ -18,6 +19,7 @@ const CameraScreen = ({ navigation }) => {
   const cameraRef = useRef(null);
   const [faces, setFaces] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('sunglasses'); // 'none', 'sunglasses'
+  const { user } = useUserStore();
 
   useEffect(() => {
     console.log('CameraScreen mounted, requesting permissions');
@@ -144,6 +146,18 @@ const CameraScreen = ({ navigation }) => {
           </View>
         </SafeAreaView>
 
+        {/* Top-left profile button */}
+        <SafeAreaView edges={['top']} className="absolute top-0 left-0 z-10 p-4">
+          <Button
+            variant="circular"
+            size="medium"
+            onPress={() => navigation.navigate('Profile')}
+            style={{ width: 48, height: 48 }}
+          >
+            <Ionicons name="person-outline" size={24} color="#374151" />
+          </Button>
+        </SafeAreaView>
+
         {/* Capture button and filter selector */}
         <View className="absolute bottom-36 w-full items-center">
           <View className="flex-row items-center space-x-6">
@@ -237,8 +251,8 @@ const CameraScreen = ({ navigation }) => {
           );
         })}
 
-        {/* Debug info */}
-        <View className="absolute top-16 left-4 bg-black/70 p-3 rounded-lg">
+        {/* Debug info moved further down to avoid profile icon */}
+        <View className="absolute top-40 left-4 bg-black/70 p-3 rounded-lg">
           <Text className="text-white text-xs">
             Camera: {type} | Faces: {faces.length}
           </Text>

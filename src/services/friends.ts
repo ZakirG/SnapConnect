@@ -221,6 +221,8 @@ export async function getIncomingFriendRequests(userId: string): Promise<FriendR
     .eq('recipient_id', userId)
     .eq('status', 'pending');
 
+  console.log('[Friends] Incoming friend requests raw:', requests, reqError);
+
   if (reqError) {
     throw new Error(`Failed to get friend requests: ${reqError.message}`);
   }
@@ -233,6 +235,8 @@ export async function getIncomingFriendRequests(userId: string): Promise<FriendR
     .from('profiles')
     .select('id, username, avatar_url')
     .in('id', requesterIds);
+
+  console.log('[Friends] Profiles for requesterIds:', requesterIds, profilesData, profilesError);
 
   if (profilesError) {
     throw new Error(`Failed to fetch requester profiles: ${profilesError.message}`);

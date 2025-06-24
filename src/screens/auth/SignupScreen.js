@@ -101,18 +101,18 @@ const SignupScreen = ({ navigation }) => {
         console.log('💾 Username:', username);
         console.log('💾 Email:', emailTrimmed);
 
-        const userProfile = {
+        const profileRow = {
           id: data.user.id,
-          username: username,
-          email: emailTrimmed,
+          username: username.trim(),
+          display_name: null,
           created_at: new Date().toISOString(),
         };
 
-        console.log('💾 Profile data to insert:', userProfile);
+        console.log('💾 Profile data to insert:', profileRow);
 
         const { error: profileError } = await supabase
-          .from('users')
-          .insert([userProfile]);
+          .from('profiles')
+          .insert([profileRow]);
 
         console.log('💾 Profile insert response:', { profileError });
 
@@ -122,12 +122,8 @@ const SignupScreen = ({ navigation }) => {
           console.log('❌ Profile error details:', JSON.stringify(profileError, null, 2));
           
           // Check for specific error types
-          if (Object.keys(profileError).length === 0) {
-            throw new Error('Database table "users" not found. Please run the SQL schema in your Supabase dashboard.');
-          } else if (profileError.message && profileError.message.includes('relation "users" does not exist')) {
-            throw new Error('Database table "users" does not exist. Please run the SQL schema in your Supabase dashboard.');
-          } else if (profileError.message && profileError.message.includes('permission denied')) {
-            throw new Error('Permission denied: Please check your Row Level Security policies in Supabase.');
+          if (profileError.message && profileError.message.includes('profiles')) {
+            throw new Error('Database table "profiles" does not exist. Please run the SQL migrations in Supabase.');
           }
           
           throw profileError;
