@@ -18,6 +18,11 @@ import {
 } from 'firebase/firestore';
 
 /**
+ * Supported media types for a Snap.
+ */
+export type MediaType = 'image' | 'video';
+
+/**
  * Uploads a Snap image located at `photoUri` to Firebase Storage and returns
  * the public download URL.
  *
@@ -25,14 +30,21 @@ import {
  * @param {string} photoUri - The local file URI of the captured image.
  * @returns {Promise<string>} The download URL of the uploaded image.
  */
-async function uploadSnapImage(senderUid: string, photoUri: string): Promise<string> {
-  const response = await fetch(photoUri);
+async function uploadSnapMedia(
+  senderUid: string,
+  mediaUri: string,
+  mediaType: MediaType,
+): Promise<string> {
+  const response = await fetch(mediaUri);
   const blob = await response.blob();
 
-  const filePath = `snaps/${senderUid}/${Date.now()}.jpg`;
-  const imageRef = storageRef(storage, filePath);
-  await uploadBytes(imageRef, blob, { contentType: 'image/jpeg' });
-  const downloadUrl = await getDownloadURL(imageRef);
+  const extension = mediaType === 'video' ? 'mp4' : 'jpg';
+  const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
+
+  const filePath = `snaps/${senderUid}/${Date.now()}.${extension}`;
+  const fileRef = storageRef(storage, filePath);
+  await uploadBytes(fileRef, blob, { contentType });
+  const downloadUrl = await getDownloadURL(fileRef);
   return downloadUrl;
 }
 
@@ -43,22 +55,25 @@ async function uploadSnapImage(senderUid: string, photoUri: string): Promise<str
  *
  * @param {string} senderUid - UID of the sending user.
  * @param {string[]} recipientUids - Array of recipient UIDs.
- * @param {string} photoUri - Local URI of the captured photo.
+ * @param {string} mediaUri - Local URI of the captured media.
+ * @param {MediaType} mediaType - Type of the media (default: 'image').
  */
 export async function sendSnap(
   senderUid: string,
   recipientUids: string[],
-  photoUri: string
+  mediaUri: string,
+  mediaType: MediaType = 'image',
 ): Promise<void> {
-  if (!photoUri) throw new Error('Missing snap image');
+  if (!mediaUri) throw new Error('Missing snap media');
   if (!recipientUids.length) throw new Error('Recipient list is empty');
 
-  const storageUrl = await uploadSnapImage(senderUid, photoUri);
+  const storageUrl = await uploadSnapMedia(senderUid, mediaUri, mediaType);
 
   await addDoc(collection(db, 'snaps'), {
     senderUid,
     recipientUids,
     storageUrl,
+    mediaType,
     createdAt: Timestamp.now(),
   });
 } 

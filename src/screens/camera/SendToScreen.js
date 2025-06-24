@@ -16,11 +16,14 @@ import { getFriends } from '../../services/friends';
 import { sendSnap } from '../../services/snaps';
 
 const SendToScreen = ({ route, navigation }) => {
-  const { photoUri } = route.params;
+  const { mediaUri, mediaType = 'image', photoUri } = route.params;
   const { user } = useUserStore();
   const [friends, setFriends] = useState([]); // {uid, username}
   const [selected, setSelected] = useState(new Set());
   const [isSending, setIsSending] = useState(false);
+
+  // Fallback for legacy param name
+  const snapUri = mediaUri ?? photoUri;
 
   useEffect(() => {
     let mounted = true;
@@ -47,7 +50,7 @@ const SendToScreen = ({ route, navigation }) => {
     if (!user || selected.size === 0) return;
     setIsSending(true);
     try {
-      await sendSnap(user.uid, Array.from(selected), photoUri);
+      await sendSnap(user.uid, Array.from(selected), snapUri, mediaType);
       navigation.navigate('Camera');
     } catch (err) {
       console.warn('Error sending snap', err);

@@ -14,15 +14,17 @@ import { Ionicons } from '@expo/vector-icons';
 const CameraScreen = ({ navigation }) => {
   const [hasPermission, setHasPermission] = useState(null);
   const [type, setType] = useState('back');
+  const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
     console.log('CameraScreen mounted, requesting permissions');
     (async () => {
       try {
-        const { status } = await Camera.requestCameraPermissionsAsync();
-        console.log('Camera permission status', status);
-        setHasPermission(status === 'granted');
+        const { status: camStatus } = await Camera.requestCameraPermissionsAsync();
+        const { status: micStatus } = await Camera.requestMicrophonePermissionsAsync();
+        console.log('Permission status — camera:', camStatus, 'microphone:', micStatus);
+        setHasPermission(camStatus === 'granted' && micStatus === 'granted');
       } catch (err) {
         console.warn('Permission request error', err);
         setHasPermission(false);
@@ -35,9 +37,44 @@ const CameraScreen = ({ navigation }) => {
   }
 
   const takePicture = async () => {
-    if (cameraRef.current) {
+    if (cameraRef.current && !isRecording) {
       const photo = await cameraRef.current.takePictureAsync();
-      navigation.navigate('SnapPreview', { photoUri: photo.uri });
+      navigation.navigate('SnapPreview', {
+        mediaUri: photo.uri,
+        mediaType: 'image',
+      });
+    }
+  };
+
+  /**
+   * Starts an async video recording session. The promise returned by `recordAsync`
+   * resolves only after `stopRecording` is invoked, at which point we navigate
+   * to the preview screen.
+   */
+  const startRecording = async () => {
+    if (cameraRef.current && !isRecording) {
+      try {
+        setIsRecording(true);
+        const video = await cameraRef.current.recordAsync();
+        // After recording completes, navigate to preview
+        navigation.navigate('SnapPreview', {
+          mediaUri: video.uri,
+          mediaType: 'video',
+        });
+      } catch (err) {
+        console.warn('Video recording error', err);
+      } finally {
+        setIsRecording(false);
+      }
+    }
+  };
+
+  /**
+   * Stops an active recording session if one exists.
+   */
+  const stopRecording = () => {
+    if (cameraRef.current && isRecording) {
+      cameraRef.current.stopRecording();
     }
   };
 
@@ -64,8 +101,18 @@ const CameraScreen = ({ navigation }) => {
 
         {/* Capture button – raised above bottom nav */}
         <View className="absolute bottom-32 w-full items-center">
-          <Button onPress={takePicture} style={{ width: 80, height: 80, borderRadius: 40 }} />
+          <Button
+            onPress={takePicture}
+            onLongPress={startRecording}
+            onPressOut={stopRecording}
+            style={{ width: 80, height: 80, borderRadius: 40 }}
+          />
         </View>
+
+        {/* Recording indicator */}
+        {isRecording && (
+          <View className="absolute top-16 left-1/2 -ml-1.5 w-3 h-3 bg-red-500 rounded-full" />
+        )}
 
         {/* Bottom navigation */}
         <SafeAreaView
