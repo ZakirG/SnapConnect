@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 /**
  * A screen that displays the camera view, allowing users to take photos.
@@ -53,14 +55,40 @@ const CameraScreen = ({ navigation }) => {
   return (
     <View className="flex-1">
       <CameraView key={type} style={{ flex: 1 }} facing={type} ref={cameraRef}>
-        <View className="flex-1 bg-transparent flex-col justify-between m-8">
-          <TouchableOpacity className="self-end items-center bg-transparent mt-12" onPress={toggleCameraType}>
-            <Text className="text-lg font-bold text-white">Flip</Text>
+        {/* Flip camera button (top-right) */}
+        <View className="absolute top-12 right-6 z-10">
+          <TouchableOpacity onPress={toggleCameraType}>
+            <Ionicons name="camera-reverse-outline" size={28} color="white" />
           </TouchableOpacity>
-          <View className="items-center">
-            <Button onPress={takePicture} style={{width: 70, height: 70, borderRadius: 35}} />
-          </View>
         </View>
+
+        {/* Capture button – raised above bottom nav */}
+        <View className="absolute bottom-32 w-full items-center">
+          <Button onPress={takePicture} style={{ width: 80, height: 80, borderRadius: 40 }} />
+        </View>
+
+        {/* Bottom navigation */}
+        <SafeAreaView
+          edges={['bottom']}
+          className="absolute bottom-0 w-full px-10 pb-4"
+        >
+          <View className="flex-row items-center justify-between">
+            {/* Messages */}
+            <TouchableOpacity onPress={() => navigation.navigate('Chat')}>
+              <Ionicons name="chatbubble-outline" size={28} color="white" />
+            </TouchableOpacity>
+
+            {/* Camera (current) */}
+            <TouchableOpacity onPress={() => {}} activeOpacity={1}>
+              <Ionicons name="camera" size={32} color="white" />
+            </TouchableOpacity>
+
+            {/* Friends / Stories */}
+            <TouchableOpacity onPress={() => navigation.navigate('Stories')}>
+              <Ionicons name="people-outline" size={28} color="white" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </CameraView>
     </View>
   );
