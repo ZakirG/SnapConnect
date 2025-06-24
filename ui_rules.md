@@ -55,6 +55,7 @@ SnapConnect embraces a neumorphic design language that creates soft, tactile int
 - Use consistent padding and sizing
 - Text should be clearly readable with proper contrast
 - Avoid flat or material design button styles
+- All interactive buttons **must not** be flush against the screen edges. Maintain a minimum horizontal padding/margin of **16 px** (or `p-4` in Tailwind scale) from any screen edge or safe-area inset. This ensures comfortable reach and visual balance.
 
 ### 2. Cards and Containers
 - All cards must have subtle outset shadows

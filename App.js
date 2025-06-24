@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen, SignupScreen } from './src/screens/auth';
-import { CameraScreen, SnapPreviewScreen } from './src/screens/camera';
+import { CameraScreen, SnapPreviewScreen, SendToScreen } from './src/screens/camera';
 import { ChatScreen } from './src/screens/chat';
 import { StoriesScreen, ProfileScreen } from './src/screens/social';
 import { useUserStore } from './src/store/user';
@@ -24,6 +24,7 @@ const MainNavigator = () => (
   <MainStack.Navigator screenOptions={{ headerShown: false }}>
     <MainStack.Screen name="Camera" component={CameraScreen} />
     <MainStack.Screen name="SnapPreview" component={SnapPreviewScreen} />
+    <MainStack.Screen name="SendTo" component={SendToScreen} />
     <MainStack.Screen name="Chat" component={ChatScreen} />
     <MainStack.Screen name="Stories" component={StoriesScreen} />
     <MainStack.Screen name="Profile" component={ProfileScreen} />

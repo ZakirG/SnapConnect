@@ -11,6 +11,8 @@ import { initializeApp } from "firebase/app";
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import {
   API_KEY,
   AUTH_DOMAIN,
@@ -40,6 +42,12 @@ export const auth = initializeAuth(app, {
 
 // Initialize Firestore and export
 export const db = getFirestore(app);
+
+// Initialize Realtime Database and export (used for low-latency chat)
+export const rtdb = getDatabase(app);
+
+// Initialize Cloud Storage and export
+export const storage = getStorage(app);
 
 // Keep default export for backward compatibility
 export default app; 
