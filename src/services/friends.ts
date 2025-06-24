@@ -42,6 +42,7 @@ export interface PublicUser {
   id: string;
   username: string;
   email?: string;
+  avatar_url?: string;
 }
 
 /**
@@ -66,8 +67,8 @@ export async function searchUsersByUsername(username: string): Promise<PublicUse
   if (!username) return [];
 
   const { data, error } = await supabase
-    .from('users')
-    .select('id, username, email')
+    .from('profiles')
+    .select('id, username, avatar_url')
     .ilike('username', `%${username.toLowerCase().trim()}%`)
     .limit(20);
 
@@ -118,18 +119,16 @@ export async function acceptFriendRequest(currentUser: User, requesterId: string
 
   const now = new Date().toISOString();
 
-  // Start a transaction
+  // Create canonical row (user_id < friend_id)
+  const [userOne, userTwo] = [currentUser.id, requesterId].sort();
+
   const { error: friendsError } = await supabase
-    .from('friends')
+    .from('friendships')
     .insert([
       {
-        user_id: currentUser.id,
-        friend_id: requesterId,
-        created_at: now,
-      },
-      {
-        user_id: requesterId,
-        friend_id: currentUser.id,
+        user_id: userOne,
+        friend_id: userTwo,
+        status: 'accepted',
         created_at: now,
       },
     ]);
@@ -138,15 +137,15 @@ export async function acceptFriendRequest(currentUser: User, requesterId: string
     throw new Error(`Failed to create friendship: ${friendsError.message}`);
   }
 
-  // Delete the friend request
-  const { error: deleteError } = await supabase
+  // Mark the friend request as accepted
+  const { error: updateError } = await supabase
     .from('friend_requests')
-    .delete()
+    .update({ status: 'accepted' })
     .eq('requester_id', requesterId)
     .eq('recipient_id', currentUser.id);
 
-  if (deleteError) {
-    throw new Error(`Failed to delete friend request: ${deleteError.message}`);
+  if (updateError) {
+    throw new Error(`Failed to update friend request status: ${updateError.message}`);
   }
 }
 
@@ -178,26 +177,35 @@ export async function denyFriendRequest(currentUser: User, requesterId: string):
  */
 export async function getFriends(userId: string): Promise<PublicUser[]> {
   const { data, error } = await supabase
-    .from('friends')
+    .from('friendships')
     .select(`
+      user_id,
       friend_id,
-      users!friends_friend_id_fkey (
-        id,
-        username,
-        email
-      )
+      profiles!inner(id, username, avatar_url)
     `)
-    .eq('user_id', userId);
+    .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+    .eq('status', 'accepted');
 
   if (error) {
     throw new Error(`Failed to get friends: ${error.message}`);
   }
 
-  return data?.map((item: any) => ({
-    id: item.users.id,
-    username: item.users.username,
-    email: item.users.email,
-  })) || [];
+  return (
+    data?.map((item: any) => {
+      const profile = item.profiles;
+      // Determine the friend user (not current user)
+      const friendId = item.user_id === userId ? item.friend_id : item.user_id;
+      if (friendId !== profile.id) {
+        // Alignment mismatch – skip
+        return null;
+      }
+      return {
+        id: profile.id,
+        username: profile.username,
+        avatar_url: profile.avatar_url,
+      } as PublicUser;
+    }) || []
+  ).filter(Boolean);
 }
 
 /**
@@ -207,27 +215,39 @@ export async function getFriends(userId: string): Promise<PublicUser[]> {
  * @returns {Promise<FriendRequest[]>}
  */
 export async function getIncomingFriendRequests(userId: string): Promise<FriendRequest[]> {
-  const { data, error } = await supabase
+  const { data: requests, error: reqError } = await supabase
     .from('friend_requests')
-    .select(`
-      *,
-      users!friend_requests_requester_id_fkey (
-        id,
-        username,
-        email
-      )
-    `)
-    .eq('recipient_id', userId);
+    .select('*')
+    .eq('recipient_id', userId)
+    .eq('status', 'pending');
 
-  if (error) {
-    throw new Error(`Failed to get friend requests: ${error.message}`);
+  if (reqError) {
+    throw new Error(`Failed to get friend requests: ${reqError.message}`);
   }
 
-  return data?.map((item: any) => ({
-    id: item.users.id,
-    username: item.users.username,
-    email: item.users.email,
-    created_at: item.created_at,
-    requester_id: item.requester_id,
-  })) || [];
+  if (!requests || requests.length === 0) return [];
+
+  const requesterIds = requests.map((r: any) => r.requester_id);
+
+  const { data: profilesData, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url')
+    .in('id', requesterIds);
+
+  if (profilesError) {
+    throw new Error(`Failed to fetch requester profiles: ${profilesError.message}`);
+  }
+
+  const profileMap = new Map(profilesData?.map((p: any) => [p.id, p]));
+
+  return requests.map((req: any) => {
+    const profile = profileMap.get(req.requester_id);
+    return {
+      id: profile?.id ?? req.requester_id,
+      username: profile?.username ?? 'unknown',
+      avatar_url: profile?.avatar_url ?? null,
+      created_at: req.created_at,
+      requester_id: req.requester_id,
+    } as FriendRequest;
+  });
 } 
