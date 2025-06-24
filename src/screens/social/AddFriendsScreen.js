@@ -224,17 +224,6 @@ const AddFriendsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Activity Indicator */}
-      <View className="px-4 py-2 bg-gray-50">
-        <View className="flex-row items-center">
-          <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-          <Text className="text-sm text-gray-700">88+ suggestions were active in the last day!</Text>
-          <TouchableOpacity className="ml-1">
-            <Ionicons name="information-circle-outline" size={16} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {/* Search Bar */}
       <View className="px-4 py-3">
         <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
@@ -246,25 +235,10 @@ const AddFriendsScreen = ({ navigation }) => {
             value={searchText}
             onChangeText={setSearchText}
           />
-          <TouchableOpacity className="bg-black rounded-lg p-2">
-            <Ionicons name="qr-code" size={16} color="white" />
-          </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView className="flex-1">
-        {/* Sync Contacts Banner */}
-        <TouchableOpacity className="mx-4 mb-4 bg-yellow-100 rounded-xl p-4 flex-row items-center">
-          <View className="w-12 h-12 bg-yellow-400 rounded-xl items-center justify-center mr-3">
-            <Ionicons name="people" size={24} color="black" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-black font-semibold text-base">Sync Contacts to Find Friends</Text>
-            <Text className="text-gray-600 text-sm">or share your profile to invite friends!</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-
         {/* Added Me Section */}
         {loadingRequests ? (
           <ActivityIndicator style={{ marginTop: 16 }} />
@@ -292,7 +266,12 @@ const AddFriendsScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Note: contact sync and suggestions can be implemented later */}
+        {/* Empty state message */}
+        {!debouncedSearch && friendRequests.length === 0 && searchResults.length === 0 && !loadingRequests && (
+          <View className="items-center mt-8">
+            <Text style={{ color: '#9CA3AF' }}>You haven't added any friends yet</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
