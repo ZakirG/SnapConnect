@@ -1,145 +1,61 @@
-# Phase 2: MVP - Core Authentication & Camera
+# Phase 2: MVP - Authentication & Camera
 
-## Overview
-Build a minimal viable product with working authentication and basic camera functionality. Users can sign up, log in, and take photos with basic editing capabilities. This phase delivers the essential SnapConnect experience.
+## Goal
+Implement the core features required for a minimal viable product: user authentication (signup and login) and camera functionality. By the end of this phase, users will be able to create an account, log in, and capture a photo.
 
 ## Deliverables
-- Functional user authentication (signup/login)
-- Working camera with photo capture
-- Basic Snap editing (text, filters)
-- User profile management
-- Basic friend system
+- A fully functional user authentication flow using Firebase.
+- A protected camera screen accessible only to authenticated users.
+- The ability to capture a photo and view it on a preview screen.
+- A global state management system for user authentication status.
+
+---
 
 ## Features & Tasks
 
-### 1. Firebase Authentication Integration
-**Goal**: Implement complete authentication flow with Firebase
+### 1. **Firebase Backend Integration**
+- **Description**: Configure the Firebase project and integrate the necessary services into the application.
+- **Steps**:
+    1. Create a new project in the Firebase console.
+    2. Enable Firebase Authentication (Email/Password and Phone providers).
+    3. Enable Firestore for user data storage and Cloud Storage for media files.
+    4. Create a `config.ts` file in `src/services/firebase/` and add the Firebase project configuration keys.
+    5. Initialize the Firebase app within the application's entry point.
 
-**Steps**:
-1. Configure Firebase project and add credentials
-2. Implement email/password authentication
-3. Add phone number authentication with SMS verification
-4. Create user profile creation flow
-5. Implement authentication state management with Zustand
+### 2. **Implement User Authentication Screens**
+- **Description**: Build the UI and logic for the Signup and Login screens.
+- **UI References**: `signup-view.jpeg`, `login-view.jpeg`, `home-unauthenticated.jpeg`.
+- **Steps**:
+    1. Build the `SignupScreen` UI with input fields for email/phone, username, and password, using the neumorphic components from Phase 1.
+    2. Implement the `handleSignup` function using Firebase Authentication's `createUserWithEmailAndPassword` or phone auth methods.
+    3. Build the `LoginScreen` UI with fields for credentials.
+    4. Implement the `handleLogin` function using `signInWithEmailAndPassword`.
+    5. Store user data (e.g., username) in a `users` collection in Firestore upon successful registration.
 
-### 2. User Profile & Data Management
-**Goal**: Store and manage user data in Firebase
+### 3. **Manage Authentication State**
+- **Description**: Use Zustand to manage and persist the user's authentication state globally.
+- **Steps**:
+    1. Create a `userStore` with Zustand to hold the user object and authentication status (e.g., `isLoggedIn`).
+    2. Update the store upon successful login and clear it on logout.
+    3. Subscribe to Firebase's `onAuthStateChanged` listener to automatically update the Zustand store.
+    4. Modify the root navigator to conditionally render the `Auth` stack or the `Main` app stack based on the `isLoggedIn` state.
+    5. Implement a basic "Logout" button in a temporary location (e.g., a profile screen placeholder).
 
-**Steps**:
-1. Set up Firebase Firestore for user profiles
-2. Create user profile schema (username, displayName, avatar)
-3. Implement profile editing functionality
-4. Add avatar upload to Firebase Storage
-5. Create user search functionality
+### 4. **Implement Camera Screen**
+- **Description**: Build the main camera interface for taking photos.
+- **UI Reference**: `camera-view.jpeg`.
+- **Steps**:
+    1. Create the `CameraScreen` component.
+    2. Use the `expo-camera` library to display a full-screen live camera preview.
+    3. Implement logic to request camera and microphone permissions from the user upon screen load.
+    4. Add neumorphic UI controls to switch between the front and rear cameras.
+    5. Add a neumorphic capture button to take a photo.
 
-### 3. Enhanced Camera Functionality
-**Goal**: Implement full camera features with photo capture
-
-**Steps**:
-1. Add photo capture with proper permissions
-2. Implement camera switching (front/rear)
-3. Add flash control functionality
-4. Create photo preview screen
-5. Implement basic photo saving to device
-
-### 4. Snap Creation & Editing
-**Goal**: Allow users to create and edit Snaps with basic features
-
-**Steps**:
-1. Create Snap editing interface with neumorphic controls
-2. Implement text overlay functionality
-3. Add basic filter effects (brightness, contrast, saturation)
-4. Create drawing tool with touch gestures
-5. Implement Snap preview and confirmation
-
-### 5. Basic Friend System
-**Goal**: Enable users to add and manage friends
-
-**Steps**:
-1. Create friend request system in Firestore
-2. Implement username search functionality
-3. Add friend request notifications
-4. Create friends list management
-5. Implement basic friend profile viewing
-
-## Technical Requirements
-
-### Additional Dependencies
-```json
-{
-  "expo-image-picker": "^14.0.0",
-  "expo-media-library": "^15.0.0",
-  "react-native-gesture-handler": "^2.0.0",
-  "react-native-view-shot": "^3.0.0",
-  "expo-contacts": "^12.0.0",
-  "expo-notifications": "^0.20.0"
-}
-```
-
-### Firebase Configuration
-```typescript
-// Firebase setup for authentication and storage
-const firebaseConfig = {
-  // Firebase project configuration
-};
-
-// Firestore collections
-- users/{userId}
-- friends/{userId}/friends/{friendId}
-- friendRequests/{requestId}
-- snaps/{snapId}
-```
-
-### Enhanced File Structure
-```
-src/
-├── services/
-│   ├── firebase/
-│   │   ├── auth.ts
-│   │   ├── firestore.ts
-│   │   └── storage.ts
-│   └── api/
-│       ├── userApi.ts
-│       └── friendApi.ts
-├── hooks/
-│   ├── useAuth.ts
-│   ├── useCamera.ts
-│   └── useFriends.ts
-├── components/
-│   ├── camera/
-│   │   ├── CameraControls.tsx
-│   │   └── SnapEditor.tsx
-│   └── friends/
-│       ├── FriendList.tsx
-│       └── FriendRequest.tsx
-└── utils/
-    ├── permissions.ts
-    └── imageProcessing.ts
-```
-
-## Success Criteria
-- [ ] Users can sign up and log in successfully
-- [ ] Camera captures photos with proper permissions
-- [ ] Snap editing works with text and basic filters
-- [ ] Friend system allows adding and viewing friends
-- [ ] User profiles are properly stored and managed
-- [ ] App maintains neumorphic design consistency
-
-## User Flow Validation
-- [ ] New user can complete signup flow
-- [ ] Existing user can log in and access camera
-- [ ] User can take photo, edit it, and save
-- [ ] User can search and add friends
-- [ ] Profile information is editable and persistent
-
-## Next Phase Dependencies
-This MVP phase enables:
-- Phase 3: Enhanced - Real-time messaging and Stories
-- Phase 4: Polished - Advanced features and optimizations
-
-## Notes
-- Focus on core functionality over advanced features
-- Ensure proper error handling for authentication flows
-- Test camera functionality on physical devices
-- Implement proper data validation and security rules
-- Maintain performance with Firebase operations 
+### 5. **Implement Snap Preview**
+- **Description**: Create a screen to display the captured photo, with an option to discard it.
+- **Steps**:
+    1. Upon photo capture, navigate to a new `SnapPreviewScreen`.
+    2. Pass the URI of the captured image as a navigation parameter.
+    3. Display the captured photo full-screen on this new screen.
+    4. Add a "Discard" or "Back" button that navigates the user back to the `CameraScreen`.
+    5. The "Send To" functionality is deferred to the next phase. 

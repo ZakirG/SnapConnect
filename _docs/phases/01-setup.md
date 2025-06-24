@@ -1,128 +1,58 @@
-# Phase 1: Setup - Barebones Foundation
+# Phase 1: Project Setup & Foundation
 
-## Overview
-Establish the foundational structure and basic functionality for SnapConnect. This phase creates a minimal running framework that demonstrates core navigation and basic UI components with neumorphic styling.
+## Goal
+Establish the foundational structure of the SnapConnect application, install essential dependencies, and create the basic UI shell with a neumorphic styling foundation. This phase will result in a runnable Expo project, but with no user-facing functionality yet.
 
 ## Deliverables
-- Basic app structure with navigation
-- Authentication screens (non-functional)
-- Camera screen with basic UI
-- Neumorphic design system foundation
-- Basic state management setup
+- A runnable Expo project configured with SDK 53.
+- A well-defined project directory structure as specified in `README.md`.
+- A basic neumorphic design system with core components.
+- A placeholder navigation structure for all main screens.
+
+---
 
 ## Features & Tasks
 
-### 1. Project Setup & Dependencies
-**Goal**: Initialize React Native project with essential dependencies
+### 1. **Initialize Expo Project**
+- **Description**: Set up a new React Native project using Expo.
+- **Steps**:
+    1. Initialize a new Expo project with the SDK 53 template.
+    2. Configure `app.json` with the project name (`SnapConnect`), version, and platform-specific settings.
+    3. Define standard scripts in `package.json` for starting the development server (`start`, `ios`, `android`).
+    4. Set up the `.gitignore` file to exclude common files and directories (e.g., `node_modules`, `.expo`).
 
-**Steps**:
-1. Initialize Expo project with SDK 53
-2. Install core dependencies (Firebase, Zustand, NativeWind)
-3. Configure TypeScript and ESLint
-4. Set up basic folder structure
-5. Configure NativeWind for neumorphic styling
+### 2. **Establish Project Directory Structure**
+- **Description**: Create the folder structure to organize code logically.
+- **Steps**:
+    1. Create the `src/` directory for all source code.
+    2. Create subdirectories: `components`, `screens`, `services`, `hooks`, `store`, `utils`, `styles`, and `types`.
+    3. Further subdivide `components` into `ui`, `neumorphic`, `camera`, `chat`, and `stories`.
+    4. Further subdivide `screens` into `auth`, `camera`, `chat`, and `social`.
+    5. Add placeholder `index.ts` files within these directories to establish the module structure.
 
-### 2. Neumorphic Design System
-**Goal**: Create reusable UI components with neumorphic styling
+### 3. **Install Core Dependencies**
+- **Description**: Add and configure the primary libraries for the tech stack.
+- **Steps**:
+    1. Install `react-navigation` and its dependencies (`@react-navigation/native`, `@react-navigation/stack`, `react-native-screens`, `react-native-safe-area-context`) for navigation.
+    2. Install `nativewind` and `tailwindcss` for styling.
+    3. Install `zustand` for global state management.
+    4. Install the `firebase` SDK to prepare for backend integration.
+    5. Install `react-native-gesture-handler` for advanced touch interactions.
 
-**Steps**:
-1. Define color palette and shadow constants
-2. Create base Button component with neumorphic styling
-3. Create Input component with inset shadows
-4. Create Card component with outset shadows
-5. Set up typography system
+### 4. **Implement Neumorphic Design System Foundation**
+- **Description**: Create the base components and styling for the neumorphic UI.
+- **UI References**: `neumorphic-reference-1.png`, `neumorphic-reference-2.png`.
+- **Steps**:
+    1. Configure `tailwind.config.js` to enable NativeWind and define the app's color palette, fonts, and shadow utilities as per `ui_rules.md`.
+    2. Create a `NeumorphicView` base component that handles the soft shadow and highlight effect.
+    3. Build foundational UI components in `src/components/neumorphic/`: `Button`, `Card`, and `Input`.
+    4. Ensure all base components adhere to the principles outlined in `ui_rules.md`.
 
-### 3. Basic Navigation Structure
-**Goal**: Implement core navigation between main screens
-
-**Steps**:
-1. Set up React Navigation with bottom tabs
-2. Create placeholder screens (Camera, Chat, Stories, Profile)
-3. Implement basic tab navigation
-4. Add navigation guards for authentication
-5. Style navigation with neumorphic elements
-
-### 4. Authentication UI Screens
-**Goal**: Create login and signup screens with neumorphic design
-
-**Steps**:
-1. Design login screen layout with neumorphic form
-2. Create signup screen with multi-step form
-3. Add form validation UI (non-functional)
-4. Implement neumorphic button states
-5. Add loading and error state placeholders
-
-### 5. Camera Screen Foundation
-**Goal**: Create basic camera interface with neumorphic controls
-
-**Steps**:
-1. Set up camera permissions and basic preview
-2. Create neumorphic camera control buttons
-3. Add camera toggle (front/rear) functionality
-4. Implement basic capture button with neumorphic styling
-5. Add placeholder for filter selection UI
-
-## Technical Requirements
-
-### Dependencies to Install
-```json
-{
-  "expo": "^53.0.0",
-  "react-navigation": "^6.0.0",
-  "firebase": "^10.0.0",
-  "zustand": "^4.0.0",
-  "nativewind": "^2.0.0",
-  "expo-camera": "^14.0.0",
-  "react-native-reanimated": "^3.0.0"
-}
-```
-
-### File Structure
-```
-src/
-├── components/
-│   ├── ui/
-│   │   ├── Button.tsx
-│   │   ├── Input.tsx
-│   │   ├── Card.tsx
-│   │   └── index.ts
-│   └── neumorphic/
-│       ├── NeumorphicButton.tsx
-│       └── NeumorphicCard.tsx
-├── screens/
-│   ├── auth/
-│   │   ├── LoginScreen.tsx
-│   │   └── SignupScreen.tsx
-│   ├── CameraScreen.tsx
-│   ├── ChatScreen.tsx
-│   ├── StoriesScreen.tsx
-│   └── ProfileScreen.tsx
-├── navigation/
-│   └── AppNavigator.tsx
-├── store/
-│   └── index.ts
-└── styles/
-    ├── colors.ts
-    ├── shadows.ts
-    └── typography.ts
-```
-
-## Success Criteria
-- [ ] App launches without errors
-- [ ] Navigation works between all screens
-- [ ] Neumorphic styling is consistent across components
-- [ ] Camera screen shows basic preview
-- [ ] Authentication screens have proper form layout
-- [ ] All interactive elements provide visual feedback
-
-## Next Phase Dependencies
-This setup phase provides the foundation for:
-- Phase 2: MVP - Authentication functionality
-- Phase 3: Enhanced - Camera features and Snap creation
-- Phase 4: Polished - Chat and Stories functionality
-
-## Notes
-- Focus on UI/UX foundation rather than functionality
-- Ensure neumorphic design principles are consistently applied
-- Keep components reusable for future phases
-- Test on both iOS and Android simulators 
+### 5. **Set Up Basic Navigation Shell**
+- **Description**: Implement the app's primary navigation flow with placeholder screens.
+- **Steps**:
+    1. Create a root navigator using `react-navigation` that will manage the authentication and main app flows.
+    2. Implement a stack navigator for the authentication flow (Signup, Login).
+    3. Implement a tab or stack navigator for the main application screens (Camera, Chat, Stories).
+    4. Create placeholder screen components for `LoginScreen`, `SignupScreen`, `CameraScreen`, `ChatScreen`, and `StoriesScreen`.
+    5. The app should launch and allow navigation between these empty, styled placeholder screens. 

@@ -1,186 +1,60 @@
 # Phase 3: Enhanced - Real-time Messaging & Stories
 
-## Overview
-Add real-time messaging capabilities and Stories functionality to create a complete ephemeral messaging experience. This phase transforms SnapConnect into a fully functional social platform with disappearing content.
+## Goal
+Expand on the MVP by building the core social and communication features. This phase focuses on enabling users to connect with friends, send Snaps, engage in real-time chat, and share ephemeral content through Stories.
 
 ## Deliverables
-- Real-time chat with disappearing messages
-- Stories creation and viewing
-- Snap sharing to friends and groups
-- Group chat functionality
-- Push notifications
+- A friend management system (search, add, view friends).
+- The ability to send a captured photo (a "Snap") to one or more friends.
+- A real-time, one-on-one chat interface.
+- A functional Stories feature where users can post Snaps that last for 24 hours.
+
+---
 
 ## Features & Tasks
 
-### 1. Real-time Chat System
-**Goal**: Implement instant messaging with disappearing content
+### 1. **Friend Management System**
+- **Description**: Implement the functionality for users to find and connect with each other.
+- **Steps**:
+    1. Create a `friends` sub-collection in Firestore for each user to store their list of friend UIDs.
+    2. Build a search interface that allows users to look up other users by their unique username.
+    3. Implement a friend request system: sending, receiving, accepting, and denying requests.
+    4. Create a "Friends" screen where users can view their list of accepted friends.
+    5. Optionally, integrate `expo-contacts` to suggest friends from the user's device contacts.
 
-**Steps**:
-1. Set up Firebase Realtime Database for chat messages
-2. Create chat room structure and message schema
-3. Implement real-time message synchronization
-4. Add message auto-delete functionality (24h/view once)
-5. Create chat UI with neumorphic message bubbles
+### 2. **Implement Snap Sending Logic**
+- **Description**: Allow users to send their captured photos to friends.
+- **Steps**:
+    1. Create a "Send To" screen that appears after the `SnapPreviewScreen`.
+    2. This screen will display the user's friend list, allowing them to select one or more recipients.
+    3. On send, upload the Snap image to a dedicated folder in Firebase Storage.
+    4. Create a record in Firebase Realtime Database or Firestore that contains the Snap's metadata (sender ID, recipient IDs, storage URL, timestamp).
+    5. Ensure sent Snaps are marked for deletion after being viewed.
 
-### 2. Snap Sharing & Delivery
-**Goal**: Enable users to send Snaps to friends and groups
+### 3. **Build Real-Time Chat**
+- **Description**: Create a one-on-one messaging interface with ephemeral messages.
+- **UI Reference**: `home-authenticated.jpeg`.
+- **Steps**:
+    1. Design a `ChatScreen` that lists all active conversations, showing the friend's name and the last message.
+    2. Create a `ConversationScreen` for individual chats using Firebase Realtime Database for low-latency message exchange.
+    3. Implement logic to send and receive text messages in real-time.
+    4. Implement the "ephemeral" nature: messages should be deleted from the database after they are read by the recipient or after 24 hours.
+    5. Users should be able to send Snaps directly within the chat interface.
 
-**Steps**:
-1. Implement Snap upload to Firebase Storage
-2. Create Snap delivery system with metadata
-3. Add Snap viewing with auto-delete timer
-4. Implement Snap reply functionality
-5. Create Snap status tracking (sent, delivered, opened)
+### 4. **Implement Stories Creation**
+- **Description**: Allow users to post a Snap to their "Story," where it is visible to all their friends for 24 hours.
+- **Steps**:
+    1. Add an "Add to My Story" option on the "Send To" screen.
+    2. When a user posts to their Story, upload the Snap to a `/stories` path in Firebase Storage.
+    3. Store the Story's metadata (user ID, storage URL, timestamp) in a dedicated `stories` collection in Firestore.
+    4. Implement a Cloud Function or client-side logic to automatically delete Story documents and their corresponding files from Storage after 24 hours.
 
-### 3. Stories Creation & Viewing
-**Goal**: Build Stories feature for ephemeral content sharing
-
-**Steps**:
-1. Create Stories data structure in Firebase
-2. Implement Stories creation with 24h expiration
-3. Build Stories viewer with swipe navigation
-4. Add Stories reply functionality
-5. Create Stories discovery feed
-
-### 4. Group Chat & Management
-**Goal**: Enable group conversations and management
-
-**Steps**:
-1. Create group chat data structure
-2. Implement group creation and member management
-3. Add group Snap sharing functionality
-4. Create group settings and permissions
-5. Implement group chat notifications
-
-### 5. Push Notifications
-**Goal**: Keep users engaged with real-time notifications
-
-**Steps**:
-1. Configure Expo Push Notifications
-2. Implement notification for new messages
-3. Add Snap received notifications
-4. Create Stories update notifications
-5. Implement notification preferences
-
-## Technical Requirements
-
-### Additional Dependencies
-```json
-{
-  "react-native-gifted-chat": "^2.0.0",
-  "expo-device": "^5.0.0",
-  "react-native-snap-carousel": "^4.0.0",
-  "react-native-super-grid": "^4.0.0",
-  "expo-background-fetch": "^11.0.0"
-}
-```
-
-### Firebase Realtime Database Schema
-```typescript
-// Chat structure
-chats: {
-  [chatId]: {
-    participants: [userId1, userId2],
-    lastMessage: { text, timestamp, senderId },
-    messages: {
-      [messageId]: {
-        text: string,
-        senderId: string,
-        timestamp: number,
-        type: 'text' | 'snap' | 'story',
-        expiresAt: number
-      }
-    }
-  }
-}
-
-// Stories structure
-stories: {
-  [userId]: {
-    [storyId]: {
-      mediaUrl: string,
-      timestamp: number,
-      expiresAt: number,
-      viewers: [userId1, userId2]
-    }
-  }
-}
-
-// Groups structure
-groups: {
-  [groupId]: {
-    name: string,
-    members: [userId1, userId2],
-    admins: [userId1],
-    createdAt: number
-  }
-}
-```
-
-### Enhanced File Structure
-```
-src/
-├── components/
-│   ├── chat/
-│   │   ├── ChatBubble.tsx
-│   │   ├── ChatInput.tsx
-│   │   ├── SnapViewer.tsx
-│   │   └── MessageList.tsx
-│   ├── stories/
-│   │   ├── StoryViewer.tsx
-│   │   ├── StoryCreator.tsx
-│   │   ├── StoriesFeed.tsx
-│   │   └── StoryBubble.tsx
-│   └── groups/
-│       ├── GroupChat.tsx
-│       ├── GroupSettings.tsx
-│       └── MemberList.tsx
-├── services/
-│   ├── chatService.ts
-│   ├── storiesService.ts
-│   ├── notificationService.ts
-│   └── groupService.ts
-├── hooks/
-│   ├── useChat.ts
-│   ├── useStories.ts
-│   └── useNotifications.ts
-└── utils/
-    ├── messageUtils.ts
-    ├── storyUtils.ts
-    └── notificationUtils.ts
-```
-
-## Success Criteria
-- [ ] Real-time messages sync across devices instantly
-- [ ] Snaps disappear after viewing or 24 hours
-- [ ] Stories are viewable for 24 hours with proper expiration
-- [ ] Group chats support multiple participants
-- [ ] Push notifications work for all message types
-- [ ] Chat UI maintains neumorphic design consistency
-
-## User Flow Validation
-- [ ] User can send and receive real-time messages
-- [ ] Snaps are delivered and auto-delete properly
-- [ ] Stories are created and viewed with expiration
-- [ ] Group chats function with multiple members
-- [ ] Notifications appear for new content
-
-## Performance Considerations
-- Implement message pagination for large chats
-- Optimize image loading and caching
-- Use background tasks for content cleanup
-- Implement proper error handling for network issues
-- Monitor Firebase usage and costs
-
-## Next Phase Dependencies
-This enhanced phase enables:
-- Phase 4: Polished - Advanced features and optimizations
-- Future phases: AR filters, video calls, advanced social features
-
-## Notes
-- Focus on real-time performance and reliability
-- Implement proper offline handling and sync
-- Ensure message delivery guarantees
-- Test with multiple users simultaneously
-- Monitor Firebase Realtime Database costs
-- Implement proper security rules for data access 
+### 5. **Build Stories Viewing Experience**
+- **Description**: Create the interface for users to view their friends' Stories.
+- **UI Reference**: `home-authenticated.jpeg` (for Story circles).
+- **Steps**:
+    1. Create a dedicated `StoriesScreen` or integrate a Stories rail into an existing screen.
+    2. Fetch the active stories from all of the current user's friends.
+    3. Display the stories as a list of circular, tappable profile icons.
+    4. Tapping a user's icon opens a full-screen, auto-advancing viewer that plays their story Snaps in chronological order.
+    5. Implement UI indicators to show which stories have already been viewed. 
