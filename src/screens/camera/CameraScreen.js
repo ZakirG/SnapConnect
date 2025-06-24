@@ -18,8 +18,15 @@ const CameraScreen = ({ navigation }) => {
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef(null);
   const [faces, setFaces] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState('sunglasses'); // 'none', 'sunglasses'
+  const [selectedFilter, setSelectedFilter] = useState('none'); // 'none' | 'sunglasses' | 'horns' | 'sunglasses2'
   const { user } = useUserStore();
+
+  const FILTERS = [
+    { key: 'none', label: '🚫', src: null },
+    { key: 'sunglasses', label: '👓', src: require('../../../assets/ar_filters/sunglasses.png') },
+    { key: 'sunglasses2', label: '🕶️', src: require('../../../assets/ar_filters/sunglasses-2.png') },
+    { key: 'horns', label: '😈', src: require('../../../assets/ar_filters/horns.png') },
+  ];
 
   useEffect(() => {
     console.log('CameraScreen mounted, requesting permissions');
@@ -48,8 +55,8 @@ const CameraScreen = ({ navigation }) => {
     setFaces(faces);
   };
 
-  const toggleFilter = () => {
-    setSelectedFilter(current => current === 'none' ? 'sunglasses' : 'none');
+  const selectFilter = (key) => {
+    setSelectedFilter(key);
   };
 
   const takePicture = async () => {
@@ -161,20 +168,25 @@ const CameraScreen = ({ navigation }) => {
         {/* Capture button and filter selector */}
         <View className="absolute bottom-36 w-full items-center">
           <View className="flex-row items-center space-x-6">
-            {/* Filter selector button */}
-            <TouchableOpacity
-              onPress={toggleFilter}
-              activeOpacity={0.8}
-              className="w-[50px] h-[50px] items-center justify-center"
-            >
-              <View className="w-[46px] h-[46px] rounded-full border-4 border-white/70 bg-black/20 items-center justify-center">
-                {selectedFilter === 'sunglasses' ? (
-                  <Text className="text-white text-xs font-bold">👓</Text>
-                ) : (
-                  <Ionicons name="close" size={20} color="white" />
-                )}
-              </View>
-            </TouchableOpacity>
+            {/* Filter selector buttons */}
+            <View className="flex-row space-x-3">
+              {FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f.key}
+                  onPress={() => selectFilter(f.key)}
+                  activeOpacity={0.8}
+                  className={`w-[46px] h-[46px] rounded-full border-2 ${
+                    selectedFilter === f.key ? 'border-yellow-400' : 'border-white/70'
+                  } bg-black/30 items-center justify-center`}
+                >
+                  {f.key === 'none' ? (
+                    <Ionicons name="close" size={20} color="white" />
+                  ) : (
+                    <Image source={f.src} style={{ width: 28, height: 14, resizeMode: 'contain' }} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
 
             {/* Capture button */}
             <TouchableOpacity
@@ -221,7 +233,7 @@ const CameraScreen = ({ navigation }) => {
         </View>
 
         {/* AR Filter Overlays – dynamic positioning when faces detected */}
-        {selectedFilter === 'sunglasses' && faces.map((face, index) => {
+        {selectedFilter !== 'none' && faces.map((face, index) => {
           // expo-camera provides bounds and basic face info
           const { bounds } = face;
           if (!bounds) return null;
@@ -232,41 +244,83 @@ const CameraScreen = ({ navigation }) => {
           const centerX = bounds.origin.x + faceWidth / 2;
           const eyeY = bounds.origin.y + faceHeight * 0.35; // Eyes are roughly 35% down from top
 
-          const sunglassesWidth = faceWidth * 0.8;
-          const sunglassesHeight = sunglassesWidth * 0.4;
+          // Determine placement per filter
+          let src;
+          let width;
+          let height;
+          let left;
+          let top;
+
+          switch (selectedFilter) {
+            case 'sunglasses':
+            case 'sunglasses2': {
+              src = selectedFilter === 'sunglasses'
+                ? require('../../../assets/ar_filters/sunglasses.png')
+                : require('../../../assets/ar_filters/sunglasses-2.png');
+              width = faceWidth * 0.8;
+              height = width * 0.4;
+              left = centerX - width / 2;
+              top = eyeY - height / 2;
+              break;
+            }
+            case 'horns':
+              src = require('../../../assets/ar_filters/horns.png');
+              width = faceWidth * 1.0;
+              height = width * 0.6;
+              left = centerX - width / 2;
+              top = bounds.origin.y - height * 0.3 - 180; // move further up by 180px
+              break;
+            default:
+              return null;
+          }
 
           return (
             <Image
               key={face.faceID ?? `face-${index}`}
-              source={require('../../../assets/ar_filters/sunglasses.png')}
+              source={src}
               style={{
                 position: 'absolute',
-                left: centerX - sunglassesWidth / 2,
-                top: eyeY - sunglassesHeight / 2,
-                width: sunglassesWidth,
-                height: sunglassesHeight,
+                left,
+                top,
+                width,
+                height,
                 resizeMode: 'contain',
               }}
             />
           );
         })}
 
-        {/* AR Filter fallback – show overlay even without a face */}
-        {selectedFilter === 'sunglasses' && faces.length === 0 && (
-          <Image
-            source={require('../../../assets/ar_filters/sunglasses.png')}
-            style={{
-              position: 'absolute',
-              // 2.5× previous scale → 1.5× screen width; adjust to keep centred
-              width: Dimensions.get('window').width * 1.5,
-              height: Dimensions.get('window').width * 0.6, // preserves 0.4 ratio * 1.5
-              left: -Dimensions.get('window').width * 0.25, // centre horizontally
-              top: Dimensions.get('window').height * 0.35,
-              resizeMode: 'contain',
-              opacity: 0.9,
-            }}
-          />
-        )}
+        {/* AR Filter fallback for non-face scenario */}
+        {selectedFilter !== 'none' && faces.length === 0 && (() => {
+          let src;
+          switch (selectedFilter) {
+            case 'sunglasses':
+              src = require('../../../assets/ar_filters/sunglasses.png');
+              break;
+            case 'sunglasses2':
+              src = require('../../../assets/ar_filters/sunglasses-2.png');
+              break;
+            case 'horns':
+              src = require('../../../assets/ar_filters/horns.png');
+              break;
+            default:
+              return null;
+          }
+          return (
+            <Image
+              source={src}
+              style={{
+                position: 'absolute',
+                width: Dimensions.get('window').width * 1.5,
+                height: Dimensions.get('window').width * 0.6,
+                left: -Dimensions.get('window').width * 0.25,
+                top: Dimensions.get('window').height * 0.35 - (src === require('../../../assets/ar_filters/horns.png') ? 180 : 0),
+                resizeMode: 'contain',
+                opacity: 0.9,
+              }}
+            />
+          );
+        })()}
 
         {/* Debug info moved further down to avoid profile icon */}
         <View className="absolute top-40 left-4 bg-black/70 p-3 rounded-lg">
