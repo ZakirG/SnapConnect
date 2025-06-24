@@ -21,6 +21,9 @@ const CameraScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState('none'); // 'none' | 'sunglasses' | 'horns' | 'sunglasses2'
   const { user } = useUserStore();
 
+  // Verbose logging helper
+  const log = (...args) => console.log('[CameraScreen]', ...args);
+
   const FILTERS = [
     { key: 'none', label: '🚫', src: null },
     { key: 'sunglasses', label: '👓', src: require('../../../assets/ar_filters/sunglasses.png') },
@@ -48,18 +51,38 @@ const CameraScreen = ({ navigation }) => {
   }
 
   const handleFacesDetected = ({ faces }) => {
-    console.log('Face detection callback triggered. Faces detected:', faces.length);
+    log('handleFacesDetected fired. faces.length =', faces.length, 'filter:', selectedFilter);
     if (faces.length > 0) {
-      console.log('First face data:', JSON.stringify(faces[0], null, 2));
+      log('First face bounds', faces[0].bounds);
     }
     setFaces(faces);
+  };
+
+  const handleCameraReady = () => {
+    log('Camera is ready');
+  };
+
+  const handleMountError = (e) => {
+    log('Camera mount error', e?.nativeEvent?.message || e);
   };
 
   const selectFilter = (key) => {
     // Immediately hide any existing overlay before re-render with new filter
     setFaces([]);
+    log('filter pressed →', key);
     setSelectedFilter(key);
   };
+
+  // Heartbeat – logs every second so we know detector flag status
+  useEffect(() => {
+    const id = setInterval(() => {
+      log('heartbeat',
+        'enableFaceDetection =', selectedFilter !== 'none',
+        '| selectedFilter =', selectedFilter,
+        '| faces.length =', faces.length);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [selectedFilter, faces]);
 
   const takePicture = async () => {
     if (cameraRef.current && !isRecording) {
@@ -121,10 +144,13 @@ const CameraScreen = ({ navigation }) => {
         style={{ flex: 1 }}
         facing={type}
         ref={cameraRef}
+        enableFaceDetection={selectedFilter !== 'none'}
         onFacesDetected={handleFacesDetected}
+        onCameraReady={handleCameraReady}
+        onMountError={handleMountError}
         faceDetectorSettings={{
           mode: 'fast',
-          detectLandmarks: 'none',
+          detectLandmarks: 'all',
           runClassifications: 'none',
           minDetectionInterval: 100,
           tracking: true,

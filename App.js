@@ -9,6 +9,7 @@ import ConversationScreen from './src/screens/chat/ConversationScreen';
 import { StoriesScreen, ProfileScreen, AddFriendsScreen } from './src/screens/social';
 import { useUserStore } from './src/store/user';
 import { supabase } from './src/services/supabase/config';
+import { FaceDetectionScreen } from './src/screens';
 
 const AuthStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -21,8 +22,9 @@ const AuthNavigator = () => (
 );
 
 const MainNavigator = () => (
-  <MainStack.Navigator screenOptions={{ headerShown: false }}>
+  <MainStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Camera">
     <MainStack.Screen name="Camera" component={CameraScreen} />
+    <MainStack.Screen name="FaceDetect" component={FaceDetectionScreen} />
     <MainStack.Screen name="SnapPreview" component={SnapPreviewScreen} />
     <MainStack.Screen name="SendTo" component={SendToScreen} />
     <MainStack.Screen name="Chat" component={ChatScreen} />

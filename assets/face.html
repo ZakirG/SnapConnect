@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Face API Detection</title>
+  <style>
+    html,body{margin:0;padding:0;overflow:hidden;background:#000}
+    #video{position:absolute;top:0;left:0;width:100vw;height:100vh;object-fit:cover}
+  </style>
+  <!-- Face-api.js CDN bundle -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+<body>
+  <video id="video" autoplay muted playsinline></video>
+  <script>
+    const RN = window.ReactNativeWebView;
+    const logStage = (stage, extra={}) => RN?.postMessage(JSON.stringify({ stage, ...extra }));
+
+    logStage('html_loaded');
+
+    const video = document.getElementById('video');
+
+    async function init() {
+      logStage('init_start');
+      // Load lightweight models (hosted on CDN)
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights';
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
+
+      // Open user-facing camera
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        video.srcObject = stream;
+        logStage('camera_opened');
+      } catch (err) {
+        logStage('camera_error', { error: err.message });
+        return;
+      }
+      detectLoop();
+    }
+
+    function mean(pts){
+      const r = pts.reduce((a,p)=>({x:a.x+p.x,y:a.y+p.y}),{x:0,y:0});
+      return {x: r.x/pts.length, y: r.y/pts.length};
+    }
+
+    async function detectLoop(){
+      if(video.readyState>=2){
+        const result = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+          .withFaceLandmarks(true);
+        if(result){
+          const leftEye = mean(result.landmarks.getLeftEye());
+          const rightEye= mean(result.landmarks.getRightEye());
+          RN?.postMessage(JSON.stringify({
+            box: result.detection.box,
+            leftEyeCenter: leftEye,
+            rightEyeCenter: rightEye,
+            ts: Date.now()
+          }));
+        }
+      }
+      requestAnimationFrame(detectLoop);
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html> 
