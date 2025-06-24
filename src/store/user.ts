@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { User } from 'firebase/auth';
+import type { User } from '@supabase/supabase-js';
 
 interface UserState {
   user: User | null;
@@ -16,7 +16,7 @@ interface UserState {
 /**
  * Zustand store for user authentication.
  *
- * @property {User | null} user - The authenticated user object from Firebase, or null if not logged in.
+ * @property {User | null} user - The authenticated user object from Supabase, or null if not logged in.
  * @property {boolean} isLoggedIn - A boolean flag indicating if the user is currently authenticated.
  * @property {function(User | null): void} setUser - Action to set the user and update the login status.
  * @property {function(): void} logout - Action to clear the user data and log the user out.

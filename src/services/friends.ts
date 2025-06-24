@@ -1,175 +1,233 @@
 /**
  * Friend Management Service
  * -------------------------
- * This module contains all Firestore interactions related to the friend
+ * This module contains all Supabase interactions related to the friend
  * management system:
  *   • Searching users by username
  *   • Sending, receiving, accepting, and denying friend requests
  *   • Fetching the current user's friends list
  *
- * Firestore Data Model (proposed)
- * -------------------------------
- * users (collection)
- *   └─ {uid} (document)
- *        • username: string
- *        • createdAt: Timestamp
- *        ├─ friends (sub-collection)
- *        │   └─ {friendUid} → { createdAt: Timestamp }
- *        └─ friendRequests (sub-collection)
- *            └─ {requesterUid} → { createdAt: Timestamp }
+ * Database Schema (PostgreSQL tables)
+ * -----------------------------------
+ * users table:
+ *   - id (uuid, primary key) - matches auth.users.id
+ *   - username (text, unique)
+ *   - email (text)
+ *   - created_at (timestamp)
  *
- * This structure allows efficient lookup of a user's friends and incoming
- * friend requests while avoiding complex cross-user document updates.
+ * friends table:
+ *   - id (uuid, primary key)
+ *   - user_id (uuid, foreign key to users.id)
+ *   - friend_id (uuid, foreign key to users.id)
+ *   - created_at (timestamp)
+ *
+ * friend_requests table:
+ *   - id (uuid, primary key)
+ *   - requester_id (uuid, foreign key to users.id)
+ *   - recipient_id (uuid, foreign key to users.id)
+ *   - created_at (timestamp)
  */
 
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-  Timestamp,
-  where,
-  deleteDoc,
-  writeBatch,
-} from 'firebase/firestore';
-import { db } from './firebase/config';
-import type { User as FirebaseUser } from 'firebase/auth';
+import { supabase } from './supabase/config';
+import type { User } from '@supabase/supabase-js';
 
 /** *******************************
  * Type Definitions
  * *******************************/
 
 /**
- * A lightweight representation of a user stored in Firestore.
+ * A lightweight representation of a user.
  */
 export interface PublicUser {
-  uid: string;
+  id: string;
   username: string;
+  email?: string;
 }
 
 /**
- * A friend request object returned from Firestore.
+ * A friend request object returned from the database.
  */
 export interface FriendRequest extends PublicUser {
-  requestedAt: Timestamp;
+  created_at: string;
+  requester_id: string;
 }
-
-/** *******************************
- * Helper Utilities
- * *******************************/
-
-/**
- * Returns a reference to the `users/{uid}` document.
- */
-const userDocRef = (uid: string) => doc(db, 'users', uid);
-
-/**
- * Returns a reference to the `users/{uid}/friends` sub-collection.
- */
-const friendsColRef = (uid: string) => collection(userDocRef(uid), 'friends');
-
-/**
- * Returns a reference to the `users/{uid}/friendRequests` sub-collection.
- */
-const friendRequestsColRef = (uid: string) => collection(userDocRef(uid), 'friendRequests');
 
 /** *******************************
  * Public API
  * *******************************/
 
 /**
- * Searches for users whose `username` field **exactly** matches the provided
- * search term. For partial matching, consider using third-party search (e.g.
- * Algolia) or integrate Firestore's full-text search solution.
+ * Searches for users whose `username` field matches the provided search term.
  *
- * @param {string} username - The unique username to search for.
- * @returns {Promise<PublicUser[]>} A list of matching users (maximum 20).
+ * @param {string} username - The username to search for.
+ * @returns {Promise<PublicUser[]>} A list of matching users.
  */
 export async function searchUsersByUsername(username: string): Promise<PublicUser[]> {
   if (!username) return [];
 
-  const q = query(
-    collection(db, 'users'),
-    where('username', '==', username.toLowerCase().trim())
-  );
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, email')
+    .ilike('username', `%${username.toLowerCase().trim()}%`)
+    .limit(20);
 
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ uid: d.id, username: d.get('username') }));
+  if (error) {
+    throw new Error(`Failed to search users: ${error.message}`);
+  }
+
+  return data || [];
 }
 
 /**
- * Sends a friend request from the **current** user to the given `recipientUid`.
+ * Sends a friend request from the current user to the given recipient.
  *
- * Implementation details:
- *   • Writes a document under `users/{recipientUid}/friendRequests/{senderUid}`.
- *   • No data is written under the sender's document. If you require outgoing
- *     request tracking, extend this function accordingly.
- *
- * @param {User} currentUser - The authenticated Firebase user object.
- * @param {string} recipientUid - The UID of the user to send a request to.
+ * @param {User} currentUser - The authenticated Supabase user object.
+ * @param {string} recipientId - The ID of the user to send a request to.
  */
-export async function sendFriendRequest(currentUser: FirebaseUser, recipientUid: string): Promise<void> {
+export async function sendFriendRequest(currentUser: User, recipientId: string): Promise<void> {
   if (!currentUser) throw new Error('User must be authenticated');
-  if (currentUser.uid === recipientUid) throw new Error('Cannot add yourself as a friend');
+  if (currentUser.id === recipientId) throw new Error('Cannot add yourself as a friend');
 
-  const requestRef = doc(friendRequestsColRef(recipientUid), currentUser.uid);
-  await setDoc(requestRef, { requestedAt: Timestamp.now() });
+  const { error } = await supabase
+    .from('friend_requests')
+    .insert([
+      {
+        requester_id: currentUser.id,
+        recipient_id: recipientId,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+  if (error) {
+    throw new Error(`Failed to send friend request: ${error.message}`);
+  }
 }
 
 /**
  * Accepts a friend request.
  *
  * Steps:
- *   1. Add each user to the other's `friends` sub-collection.
- *   2. Delete the request document.
+ *   1. Add friendship record in both directions
+ *   2. Delete the friend request
  *
- * @param {User} currentUser - The authenticated Firebase user (recipient).
- * @param {string} requesterUid - UID of the user who sent the request.
+ * @param {User} currentUser - The authenticated Supabase user (recipient).
+ * @param {string} requesterId - ID of the user who sent the request.
  */
-export async function acceptFriendRequest(currentUser: FirebaseUser, requesterUid: string): Promise<void> {
+export async function acceptFriendRequest(currentUser: User, requesterId: string): Promise<void> {
   if (!currentUser) throw new Error('User must be authenticated');
 
-  const batch = writeBatch(db);
-  const now = Timestamp.now();
+  const now = new Date().toISOString();
 
-  batch.set(doc(friendsColRef(currentUser.uid), requesterUid), { createdAt: now });
-  batch.set(doc(friendsColRef(requesterUid), currentUser.uid), { createdAt: now });
-  batch.delete(doc(friendRequestsColRef(currentUser.uid), requesterUid));
+  // Start a transaction
+  const { error: friendsError } = await supabase
+    .from('friends')
+    .insert([
+      {
+        user_id: currentUser.id,
+        friend_id: requesterId,
+        created_at: now,
+      },
+      {
+        user_id: requesterId,
+        friend_id: currentUser.id,
+        created_at: now,
+      },
+    ]);
 
-  await batch.commit();
+  if (friendsError) {
+    throw new Error(`Failed to create friendship: ${friendsError.message}`);
+  }
+
+  // Delete the friend request
+  const { error: deleteError } = await supabase
+    .from('friend_requests')
+    .delete()
+    .eq('requester_id', requesterId)
+    .eq('recipient_id', currentUser.id);
+
+  if (deleteError) {
+    throw new Error(`Failed to delete friend request: ${deleteError.message}`);
+  }
 }
 
 /**
  * Denies (or cancels) a friend request.
  *
- * @param {User} currentUser - The authenticated Firebase user (recipient).
- * @param {string} requesterUid - UID of the user who sent the request.
+ * @param {User} currentUser - The authenticated Supabase user (recipient).
+ * @param {string} requesterId - ID of the user who sent the request.
  */
-export async function denyFriendRequest(currentUser: FirebaseUser, requesterUid: string): Promise<void> {
+export async function denyFriendRequest(currentUser: User, requesterId: string): Promise<void> {
   if (!currentUser) throw new Error('User must be authenticated');
 
-  await deleteDoc(doc(friendRequestsColRef(currentUser.uid), requesterUid));
+  const { error } = await supabase
+    .from('friend_requests')
+    .delete()
+    .eq('requester_id', requesterId)
+    .eq('recipient_id', currentUser.id);
+
+  if (error) {
+    throw new Error(`Failed to deny friend request: ${error.message}`);
+  }
 }
 
 /**
- * Returns the list of **accepted friends** for the current user.
+ * Returns the list of accepted friends for the current user.
  *
- * @param {string} uid - The UID of the authenticated user.
+ * @param {string} userId - The ID of the authenticated user.
  * @returns {Promise<PublicUser[]>}
  */
-export async function getFriends(uid: string): Promise<PublicUser[]> {
-  const snapshot = await getDocs(friendsColRef(uid));
-  return snapshot.docs.map((d) => ({ uid: d.id, username: d.id /* Placeholder, fetch as needed */ }));
+export async function getFriends(userId: string): Promise<PublicUser[]> {
+  const { data, error } = await supabase
+    .from('friends')
+    .select(`
+      friend_id,
+      users!friends_friend_id_fkey (
+        id,
+        username,
+        email
+      )
+    `)
+    .eq('user_id', userId);
+
+  if (error) {
+    throw new Error(`Failed to get friends: ${error.message}`);
+  }
+
+  return data?.map((item: any) => ({
+    id: item.users.id,
+    username: item.users.username,
+    email: item.users.email,
+  })) || [];
 }
 
 /**
- * Returns the list of **incoming friend requests**.
+ * Returns the list of incoming friend requests.
  *
- * @param {string} uid - The authenticated user UID.
+ * @param {string} userId - The authenticated user ID.
  * @returns {Promise<FriendRequest[]>}
  */
-export async function getIncomingFriendRequests(uid: string): Promise<FriendRequest[]> {
-  const snapshot = await getDocs(friendRequestsColRef(uid));
-  return snapshot.docs.map((d) => ({ uid: d.id, username: d.id, requestedAt: d.get('requestedAt') }));
+export async function getIncomingFriendRequests(userId: string): Promise<FriendRequest[]> {
+  const { data, error } = await supabase
+    .from('friend_requests')
+    .select(`
+      *,
+      users!friend_requests_requester_id_fkey (
+        id,
+        username,
+        email
+      )
+    `)
+    .eq('recipient_id', userId);
+
+  if (error) {
+    throw new Error(`Failed to get friend requests: ${error.message}`);
+  }
+
+  return data?.map((item: any) => ({
+    id: item.users.id,
+    username: item.users.username,
+    email: item.users.email,
+    created_at: item.created_at,
+    requester_id: item.requester_id,
+  })) || [];
 } 

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { Card, Input, Button } from '../../components/neumorphic';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../services/firebase/config';
+import { supabase } from '../../services/supabase/config';
 
 /**
  * A placeholder screen for user signup.
@@ -20,37 +18,148 @@ const SignupScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Firebase auth and Firestore instances imported from config file
-
   /**
    * Handles the user signup process.
-   * It creates a new user with email and password using Firebase Authentication,
-   * then stores additional user information (like username) in Firestore.
+   * It creates a new user with email and password using Supabase Authentication,
+   * then stores additional user information (like username) in the database.
    */
   const handleSignup = async () => {
+    console.log('🚀 Starting signup process...');
+    console.log('📧 Email:', email);
+    console.log('👤 Username:', username);
+    console.log('🔒 Password length:', password.length);
+    console.log('🔒 Confirm password length:', confirmPassword.length);
+
+    // Validation checks
+    if (!email.trim()) {
+      console.log('❌ Email is empty');
+      Alert.alert('Validation Error', 'Please enter your email address.');
+      return;
+    }
+
+    if (!username.trim()) {
+      console.log('❌ Username is empty');
+      Alert.alert('Validation Error', 'Please enter a username.');
+      return;
+    }
+
+    if (!password) {
+      console.log('❌ Password is empty');
+      Alert.alert('Validation Error', 'Please enter a password.');
+      return;
+    }
+
+    if (password.length < 6) {
+      console.log('❌ Password too short');
+      Alert.alert('Validation Error', 'Password must be at least 6 characters long.');
+      return;
+    }
+
     if (password !== confirmPassword) {
+      console.log('❌ Passwords do not match');
       Alert.alert("Passwords don't match.", 'Please check your passwords.');
       return;
     }
-    if (isLoading) return;
+
+    if (isLoading) {
+      console.log('⏳ Already loading, skipping...');
+      return;
+    }
+
     setIsLoading(true);
+    console.log('⏳ Set loading to true');
+
     try {
       // Remove leading/trailing whitespace from the e-mail address to avoid auth/invalid-email.
       const emailTrimmed = email.trim();
+      console.log('📧 Email trimmed:', emailTrimmed);
 
-      const userCredential = await createUserWithEmailAndPassword(auth, emailTrimmed, password);
-      const user = userCredential.user;
-
-      // Store username in Firestore with the cleaned e-mail value
-      await setDoc(doc(db, 'users', user.uid), {
-        username: username,
+      console.log('🔐 Attempting Supabase auth signup...');
+      const { data, error } = await supabase.auth.signUp({
         email: emailTrimmed,
+        password: password,
       });
 
+      console.log('🔐 Supabase signup response:', { data, error });
+
+      if (error) {
+        console.log('❌ Supabase signup error:', error);
+        console.log('❌ Error message:', error.message);
+        console.log('❌ Error status:', error.status);
+        console.log('❌ Error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      console.log('✅ Supabase signup successful');
+      console.log('👤 User data:', data.user);
+      console.log('🔑 Session data:', data.session);
+
+      // Store username in the users table
+      if (data.user) {
+        console.log('💾 Inserting user profile into database...');
+        console.log('💾 User ID:', data.user.id);
+        console.log('💾 Username:', username);
+        console.log('💾 Email:', emailTrimmed);
+
+        const userProfile = {
+          id: data.user.id,
+          username: username,
+          email: emailTrimmed,
+          created_at: new Date().toISOString(),
+        };
+
+        console.log('💾 Profile data to insert:', userProfile);
+
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([userProfile]);
+
+        console.log('💾 Profile insert response:', { profileError });
+
+        if (profileError) {
+          console.log('❌ Profile insert error:', profileError);
+          console.log('❌ Profile error message:', profileError.message);
+          console.log('❌ Profile error details:', JSON.stringify(profileError, null, 2));
+          
+          // Check for specific error types
+          if (Object.keys(profileError).length === 0) {
+            throw new Error('Database table "users" not found. Please run the SQL schema in your Supabase dashboard.');
+          } else if (profileError.message && profileError.message.includes('relation "users" does not exist')) {
+            throw new Error('Database table "users" does not exist. Please run the SQL schema in your Supabase dashboard.');
+          } else if (profileError.message && profileError.message.includes('permission denied')) {
+            throw new Error('Permission denied: Please check your Row Level Security policies in Supabase.');
+          }
+          
+          throw profileError;
+        }
+
+        console.log('✅ User profile inserted successfully');
+      } else {
+        console.log('⚠️ No user data returned from signup');
+      }
+
+      console.log('🎉 Signup process completed successfully!');
       // Navigation will be handled by the auth state listener
+
     } catch (error) {
-      Alert.alert('Signup Failed', error.message);
+      console.log('💥 Signup failed with error:', error);
+      console.log('💥 Error message:', error.message);
+      console.log('💥 Error name:', error.name);
+      console.log('💥 Full error object:', JSON.stringify(error, null, 2));
+      
+      // Show more specific error messages
+      let errorMessage = error.message;
+      if (error.message.includes('Invalid API key')) {
+        errorMessage = 'Configuration error: Invalid API key. Please check your Supabase settings.';
+      } else if (error.message.includes('not found')) {
+        errorMessage = 'Database error: User table not found. Please contact support.';
+      } else if (error.message.includes('duplicate')) {
+        errorMessage = 'This email or username is already taken.';
+      }
+      
+      Alert.alert('Signup Failed', errorMessage);
     } finally {
+      console.log('🏁 Setting loading to false');
       setIsLoading(false);
     }
   };
@@ -66,6 +175,9 @@ const SignupScreen = ({ navigation }) => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
+          autoCorrect={false}
         />
         <Input
           placeholder="Username"
@@ -73,6 +185,9 @@ const SignupScreen = ({ navigation }) => {
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
+          autoComplete="username"
+          textContentType="username"
+          autoCorrect={false}
         />
         <Input
           placeholder="Password"
@@ -80,6 +195,8 @@ const SignupScreen = ({ navigation }) => {
           style={{ marginBottom: 20 }}
           value={password}
           onChangeText={setPassword}
+          autoComplete="new-password"
+          textContentType="newPassword"
         />
         <Input
           placeholder="Confirm Password"
@@ -87,6 +204,8 @@ const SignupScreen = ({ navigation }) => {
           style={{ marginBottom: 20 }}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
+          autoComplete="new-password"
+          textContentType="newPassword"
         />
         <Button
           title={isLoading ? 'Creating Account...' : 'Sign Up'}

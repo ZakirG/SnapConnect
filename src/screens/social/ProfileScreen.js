@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Alert } from 'react-native';
 import { Button } from '../../components/neumorphic';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../services/firebase/config';
+import { supabase } from '../../services/supabase/config';
 import { useUserStore } from '../../store/user';
 
 /**
@@ -15,11 +14,14 @@ const ProfileScreen = () => {
 
   /**
    * Handles the user logout process.
-   * It signs the user out of Firebase and clears the user state.
+   * It signs the user out of Supabase and clears the user state.
    */
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
       logout(); // This will trigger the navigation change
     } catch (error) {
       Alert.alert('Logout Failed', error.message);

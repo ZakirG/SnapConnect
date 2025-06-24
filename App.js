@@ -7,8 +7,7 @@ import { CameraScreen, SnapPreviewScreen, SendToScreen } from './src/screens/cam
 import { ChatScreen } from './src/screens/chat';
 import { StoriesScreen, ProfileScreen, AddFriendsScreen } from './src/screens/social';
 import { useUserStore } from './src/store/user';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './src/services/firebase/config';
+import { supabase } from './src/services/supabase/config';
 
 const AuthStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -46,12 +45,22 @@ export default function App() {
 
   useEffect(() => {
     console.log('Auth state listener subscribing');
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('onAuthStateChanged user', user);
-      setUser(user);
+    
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session', session);
+      setUser(session?.user ?? null);
     });
 
-    return () => unsubscribe();
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('onAuthStateChange user', session?.user);
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, [setUser]);
 
   console.log('Render App, isLoggedIn =', isLoggedIn);
