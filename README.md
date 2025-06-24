@@ -11,7 +11,7 @@ A lightweight Snapchat-style app built with React Native + Expo and Supabase.
 ## ⚡ Quick Start
 ```bash
 # 1. Clone & install
-git clone https://github.com/your-org/snapconnect.git
+git clone https://github.com/ZakirG/SnapConnect.git
 cd SnapConnect
 npm install
 
