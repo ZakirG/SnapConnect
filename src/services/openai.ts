@@ -33,7 +33,7 @@ export const generateCaption = async (mediaUri: string): Promise<string> => {
           content: [
             {
               type: 'text',
-              text: "write a description of the image from the perspective of the person who took it describing their experience in that situation using I pronouns as if they were in the situation for example if they're taking a picture of nature the caption might be \"I'm looking at a beautiful plant right now and I'm reminded of the beauty of life\".",
+              text: "write a description of the image from the perspective of the person who took it describing their experience in that situation using I pronouns as if they were in the situation for example if they're taking a picture of nature the caption might be \"I'm looking at a beautiful plant right now and I'm reminded of the beauty of life.\". The caption should be 1 short sentence long, it will be used as a tweet.",
             },
             {
               type: 'image_url',
