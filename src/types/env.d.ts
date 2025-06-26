@@ -10,4 +10,5 @@ declare module '@env' {
 
 declare module 'expo-auth-session';
 declare module 'expo-crypto';
-declare module 'bad-words'; 
+declare module 'bad-words';
+declare module 'expo-secure-store'; 

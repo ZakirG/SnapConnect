@@ -33,7 +33,7 @@
     "zustand": "^5.0.5",
     "react-native-webview": "13.13.5",
     "bad-words": "^3.0.4",
-    "react-native-cheerio": "^1.0.0-rc.12"
+    "expo-secure-store": "~12.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import type { User } from '@supabase/supabase-js';
+import { saveSecure, loadSecure, deleteSecure } from '../utils/secureStore';
 
 interface UserState {
   user: User | null;
@@ -33,21 +34,46 @@ export const useUserStore = create<UserState>((set) => ({
   user: null,
   isLoggedIn: false,
   setUser: (user) => set({ user, isLoggedIn: !!user }),
-  logout: () =>
+  logout: () => {
+    deleteSecure('spotify_tokens').catch(() => {});
     set({
       user: null,
       isLoggedIn: false,
       spotifyAccessToken: null,
       spotifyRefreshToken: null,
       spotifyExpires: null,
-    }),
+    });
+  },
   spotifyAccessToken: null,
   spotifyRefreshToken: null,
   spotifyExpires: null,
-  setSpotifyTokens: (accessToken, refreshToken, expiresIn) =>
+  setSpotifyTokens: (accessToken, refreshToken, expiresIn) => {
+    const payload = {
+      accessToken,
+      refreshToken,
+      expiresAt: Date.now() + expiresIn * 1000,
+    };
+    saveSecure('spotify_tokens', JSON.stringify(payload)).catch(() => {});
     set({
       spotifyAccessToken: accessToken,
       spotifyRefreshToken: refreshToken,
-      spotifyExpires: Date.now() + expiresIn * 1000,
-    }),
-})); 
+      spotifyExpires: payload.expiresAt,
+    });
+  },
+})) as unknown as UserState & { hydrateSpotifyTokens: () => Promise<void> };
+
+// Hydration helper
+export async function hydrateSpotifyTokens(store: any) {
+  try {
+    const data = await loadSecure('spotify_tokens');
+    if (!data) return;
+    const parsed = JSON.parse(data);
+    if (parsed.expiresAt && parsed.expiresAt > Date.now()) {
+      store.setState({
+        spotifyAccessToken: parsed.accessToken,
+        spotifyRefreshToken: parsed.refreshToken,
+        spotifyExpires: parsed.expiresAt,
+      });
+    }
+  } catch {}
+} 
