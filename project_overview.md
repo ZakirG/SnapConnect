@@ -7,7 +7,7 @@ It will be a complete ephemeral messaging platform with essential features:
 - Stories and group messaging functionality
 - Core social features matching Snapchat's core experience
 
-The tech stack is React Native, Expo, Firebase auth + storage, NativeWind/Tailwind CSS for responsive design, Zustand for state management, and a Firetime Realtime Database for any real-time features. We'll be using Expo Go SDK 53.
+The tech stack is React Native, Expo, Supabase auth + storage, NativeWind/Tailwind CSS for responsive design, Zustand for state management, and a Firetime Realtime Database for any real-time features. We'll be using Expo Go SDK 53.
 
 For each of these features below, please explain to me in a simple way how we will implement them with the provided tech stack. Ideally, we would use existing libraries or packages or github repositories compatible with SDK 53 to implement features so as to save time.
 
@@ -116,22 +116,15 @@ From the camera or chat screen:
 6. **Friends**: Add/manage friends through usernames or contacts.
 
 
-Implementation discussion using the tech stack (React Native + Expo SDK 53 + Firebase + Zustand + NativeWind):
+Implementation discussion using the tech stack (React Native + Expo SDK 53 + Supabase + Zustand + NativeWind):
 
 ---
 
 ### **1. Authentication Gate (Login / Signup)**
 
-**✅ Packages:**
-
-* [`firebase`](https://www.npmjs.com/package/firebase)
-* [`react-native-firebase-auth`](https://github.com/invertase/react-native-firebase)
-* [`expo-auth-session`](https://docs.expo.dev/guides/authentication/)
-* [`react-native-phone-number-input`](https://github.com/lonelycpp/react-native-phone-number-input)
-
 **🛠️ Implementation Steps:**
 
-* Use Firebase Auth for email/password and phone login.
+* Use Supabase Auth for email/password and phone login.
 * Add phone auth with reCAPTCHA fallback using Expo's WebView or custom logic.
 * Zustand stores `user` state globally.
 * Add logic to show Camera screen only if `user != null`.
@@ -163,14 +156,14 @@ Implementation discussion using the tech stack (React Native + Expo SDK 53 + Fir
 
 * `expo-image-editor` or custom Canvas (for drawing/text)
 * `react-native-view-shot` (to flatten edited Snap)
-* Firebase Storage + Realtime DB
+* Supabase Storage + Realtime DB
 * Zustand to manage current Snap state
 
 **🛠️ Implementation Steps:**
 
 * Add tools to draw, overlay text/stickers (use `react-native-gesture-handler`).
 * Use `react-native-view-shot` to capture the final image.
-* Upload Snap to Firebase Storage.
+* Upload Snap to Supabase Storage.
 * Save metadata (sender, recipient(s), expiry timestamp) to Realtime DB.
 
 ---
@@ -179,14 +172,14 @@ Implementation discussion using the tech stack (React Native + Expo SDK 53 + Fir
 
 **✅ Packages:**
 
-* Firebase Realtime Database (fastest option for ephemeral messaging)
+* Supabase Realtime Database (fastest option for ephemeral messaging)
 * `uuid` for chat IDs
 * Zustand to manage chat state
 * Optional: `react-native-gifted-chat` (customizable chat UI)
 
 **🛠️ Implementation Steps:**
 
-* Use Firebase RTDB to store threads/messages.
+* Use Supabase RTDB to store threads/messages.
 * Messages include metadata: sender, recipient(s), sentAt, autoDeleteAfter.
 * Set up listeners in RTDB and auto-delete logic after 24 hours/viewing.
 * Use push notifications for new messages (with Expo Notifications).
@@ -199,7 +192,7 @@ Implementation discussion using the tech stack (React Native + Expo SDK 53 + Fir
 
 * Same storage mechanism as Snaps
 * Carousel UI: `react-native-snap-carousel` or horizontal FlatList
-* Firebase Realtime DB + Storage
+* Supabase Realtime DB + Storage
 
 **🛠️ Implementation Steps:**
 
@@ -215,7 +208,7 @@ Implementation discussion using the tech stack (React Native + Expo SDK 53 + Fir
 **✅ Packages:**
 
 * `expo-contacts` (to access device contacts with permission)
-* Firebase Realtime DB for storing friend requests and lists
+* Supabase Realtime DB for storing friend requests and lists
 * QR scanner: `expo-barcode-scanner`
 
 **🛠️ Implementation Steps:**
@@ -241,12 +234,12 @@ Implementation discussion using the tech stack (React Native + Expo SDK 53 + Fir
 
 | Feature                  | Library / Tool                                |
 | ------------------------ | --------------------------------------------- |
-| Auth (email/phone)       | `firebase`, `react-native-phone-number-input` |
+| Auth (email/phone)       | `Supabase`, `react-native-phone-number-input` |
 | Camera                   | `expo-camera`, `expo-face-detector`           |
 | Drawing/Text on Snaps    | Custom Canvas, `react-native-view-shot`       |
-| Real-time Chat           | Firebase Realtime DB                          |
-| Stories                  | Firebase Storage + FlatList                   |
-| Friends/Contacts         | `expo-contacts`, Firebase DB                  |
+| Real-time Chat           | Supabase Realtime DB                          |
+| Stories                  | Supabase Storage + FlatList                   |
+| Friends/Contacts         | `expo-contacts`, Supabase DB                  |
 | State Management         | Zustand                                       |
 | Styling                  | NativeWind (Tailwind for React Native)        |
 | Notifications (Optional) | Expo Push Notifications                       |

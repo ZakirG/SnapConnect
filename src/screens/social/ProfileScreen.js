@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Alert, Text } from 'react-native';
 import { Button } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 import { useUserStore } from '../../store/user';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { linkAccount, getPlaylists } from '../../services/spotify';
 
 /**
  * A screen that displays user profile information and a logout button.
@@ -12,7 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
  * @returns {React.ReactElement}
  */
 const ProfileScreen = ({ navigation }) => {
-  const { user, logout } = useUserStore();
+  const { user, logout, spotifyAccessToken, setSpotifyTokens } = useUserStore();
+  const [playlists, setPlaylists] = useState([]);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
 
   /**
    * Handles the user logout process.
@@ -29,6 +32,38 @@ const ProfileScreen = ({ navigation }) => {
       Alert.alert('Logout Failed', error.message);
     }
   };
+
+  const handleConnectSpotify = async () => {
+    try {
+      const tokens = await linkAccount();
+      if (!tokens) return; // User cancelled or error.
+      setSpotifyTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
+      console.log('[ProfileScreen] Spotify tokens stored');
+      // Immediately fetch playlists
+      await fetchAndSetPlaylists(tokens.accessToken);
+    } catch (err) {
+      console.error('[ProfileScreen] connectSpotify error', err);
+      Alert.alert('Spotify Linking Failed', err.message);
+    }
+  };
+
+  const fetchAndSetPlaylists = async (accessToken) => {
+    setIsLoadingPlaylists(true);
+    try {
+      const data = await getPlaylists(accessToken);
+      setPlaylists(data);
+    } catch (err) {
+      console.error('[ProfileScreen] getPlaylists error', err);
+    } finally {
+      setIsLoadingPlaylists(false);
+    }
+  };
+
+  useEffect(() => {
+    if (spotifyAccessToken) {
+      fetchAndSetPlaylists(spotifyAccessToken);
+    }
+  }, [spotifyAccessToken]);
 
   return (
     <View className="flex-1 bg-background">
@@ -57,6 +92,34 @@ const ProfileScreen = ({ navigation }) => {
           onPress={handleLogout}
           style={{ width: '100%' }}
         />
+        {spotifyAccessToken ? (
+          <Button
+            title="Spotify Connected"
+            size="large"
+            variant="secondary"
+            disabled
+            style={{ width: '100%' }}
+          />
+        ) : (
+          <Button
+            title="Connect Spotify"
+            size="large"
+            variant="primary"
+            onPress={handleConnectSpotify}
+            style={{ width: '100%' }}
+          />
+        )}
+
+        {/* Playlist List */}
+        {isLoadingPlaylists ? (
+          <Text className="text-gray-400 mt-4">Loading playlists…</Text>
+        ) : (
+          playlists.map((pl) => (
+            <Text key={pl.id} className="text-gray-600 text-center">
+              {pl.name}
+            </Text>
+          ))
+        )}
       </View>
     </View>
   );
