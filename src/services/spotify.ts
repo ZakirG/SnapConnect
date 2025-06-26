@@ -107,17 +107,23 @@ export async function linkAccount(): Promise<
     return null;
   }
 
+  console.log('[Spotify] Browser returned URL:', browserRes.url);
+
   // Extract ?code=... from the redirected URL.
   let authCode: string | null = null;
   try {
     const redirected = new URL(browserRes.url);
+    console.log('[Spotify] Parsed URL searchParams:', Array.from(redirected.searchParams.entries()));
     authCode = redirected.searchParams.get('code');
+    console.log('[Spotify] Extracted auth code:', authCode);
   } catch (err) {
     console.error('[Spotify] Failed to parse redirect URL', err);
+    console.error('[Spotify] Raw URL that failed to parse:', browserRes.url);
   }
 
   if (!authCode) {
     console.error('[Spotify] No auth code found in redirect');
+    console.error('[Spotify] Full browser response:', JSON.stringify(browserRes, null, 2));
     return null;
   }
 

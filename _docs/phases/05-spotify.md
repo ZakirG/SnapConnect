@@ -75,7 +75,7 @@ export async function fetchLyrics(track, artist)
   • Search Genius API (`/search?q=${title} ${artist}`)
   • Request first hit’s URL → scrape raw lyrics (cheerio)
   • Remove bracketed annotations ([Chorus], etc.)
-  • Use bad-words + excludeWords.txt to drop lines containing profanity
+  • Use bad-words + excludeWords.txt to drop individual lines containing profanity
   • Return cleaned string
 
 Integrate in spotify.ts
@@ -89,7 +89,8 @@ export async function syncPlaylistLyrics(playlistId)
        .upload(`${userId}/${trackId}.txt`, cleanedLyrics, { upsert: true });
 
 Testing
-- Run a one-off script in App.tsx that invokes syncPlaylistLyrics() on the first playlist.
+- Run a one-off script in App.tsx that invokes syncPlaylistLyrics() on one song each from
+from the 10 most recent playlists.
 - Inspect Supabase Storage: expect N `.txt` files, no profanity lines.
 ```
 

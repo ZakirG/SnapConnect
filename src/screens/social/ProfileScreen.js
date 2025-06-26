@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Alert, Text } from 'react-native';
+import { View, Alert, Text, FlatList } from 'react-native';
 import { Button } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 import { useUserStore } from '../../store/user';
@@ -110,16 +110,27 @@ const ProfileScreen = ({ navigation }) => {
           />
         )}
 
-        {/* Playlist List */}
+        {/* Playlist List – scrollable panel */}
         {isLoadingPlaylists ? (
           <Text className="text-gray-400 mt-4">Loading playlists…</Text>
-        ) : (
-          playlists.map((pl) => (
-            <Text key={pl.id} className="text-gray-600 text-center">
-              {pl.name}
-            </Text>
-          ))
-        )}
+        ) : playlists.length > 0 ? (
+          <>
+            <Text className="text-lg font-semibold">your playlists 🎶</Text>
+            <View className="w-full max-h-52 border-2 border-gray-300 rounded-lg" style={{ paddingVertical: 2 }}>
+              <FlatList
+                data={playlists}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <Text className="text-gray-600 text-center py-1" numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                )}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled
+              />
+            </View>
+          </>
+        ) : null}
       </View>
     </View>
   );
