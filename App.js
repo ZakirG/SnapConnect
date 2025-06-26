@@ -201,7 +201,7 @@ export default function App() {
 
         try {
           const lyrics = await fetchLyrics(trackName, artistName);
-          console.log("Got lyrics", lyrics);
+          // console.log("Got lyrics", lyrics);
 
           const content = lyrics ? lyrics : new Blob([''], { type: 'text/plain' });
 
