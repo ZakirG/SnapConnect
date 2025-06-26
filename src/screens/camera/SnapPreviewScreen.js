@@ -67,9 +67,9 @@ const SnapPreviewScreen = ({ route, navigation }) => {
           </Button>
         </View>
 
-        {/* Bottom section with Send To & Post Story buttons */}
-        <View className="flex-row justify-end space-x-4">
-          {/* Post to Story */}
+        {/* Bottom section with action buttons */}
+        <View className="flex-row justify-end items-end space-x-4">
+          {/* Post to Story Button */}
           <Button
             size="large"
             variant="primary"
@@ -96,18 +96,42 @@ const SnapPreviewScreen = ({ route, navigation }) => {
             </View>
           </Button>
 
-          {/* Send To */}
-          <Button
-            size="large"
-            variant="secondary"
-            onPress={() => navigation.navigate('SendTo', { mediaUri, mediaType })}
-            style={{ minWidth: 140 }}
-          >
-            <View className="flex-row items-center">
-              <Text className="text-lg font-bold text-blue-800 mr-1">Send To</Text>
-              <Ionicons name="send" size={20} color="#1e40af" />
-            </View>
-          </Button>
+          {/* Right-aligned buttons in a column */}
+          <View className="flex-col space-y-4">
+            {/* Make a SnapLyric Button */}
+            <Button
+              size="large"
+              variant="primary"
+              onPress={() =>
+                navigation.navigate('SnapLyric', { mediaUri, mediaType })
+              }
+              style={{ minWidth: 170 }}
+            >
+              <View className="flex-row items-center justify-center">
+                <Text className="text-lg font-bold text-green-800 mr-1">
+                  Make a SnapLyric
+                </Text>
+                <Ionicons name="sparkles" size={20} color="#166534" />
+              </View>
+            </Button>
+
+            {/* Send To Button */}
+            <Button
+              size="large"
+              variant="secondary"
+              onPress={() =>
+                navigation.navigate('SendTo', { mediaUri, mediaType })
+              }
+              style={{ minWidth: 170 }}
+            >
+              <View className="flex-row items-center justify-center">
+                <Text className="text-lg font-bold text-blue-800 mr-1">
+                  Send To
+                </Text>
+                <Ionicons name="send" size={20} color="#1e40af" />
+              </View>
+            </Button>
+          </View>
         </View>
       </SafeAreaView>
     </View>
