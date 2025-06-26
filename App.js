@@ -93,15 +93,20 @@ export default function App() {
         console.log('🎵 [Test] ===============================================');
         
         console.log('🎵 [Test] Step 1: Fetching your top 20 Spotify tracks...');
-        const topTracks = await getTopTracks(spotifyAccessToken, 50, 'medium_term');
+        const { data: { user } } = await supabase.auth.getUser();
+        const existing = await supabase.storage.from('lyrics-bucket').list(user.id, { limit: 1000 });
+        const existingSet = new Set(existing.data?.map(f=>f.name.replace('.txt','')));
+        const tracks = await getTopTracks(spotifyAccessToken, 50, 'medium_term');
         
-        console.log(`🎵 [Test] Found ${topTracks.length} top tracks`);
+        console.log(`🎵 [Test] Found ${tracks.length} top tracks; ${existingSet.size} have lyrics already`);
+        console.log(`🎵 [Test] Processing ${tracks.length} top tracks`);
+        
         console.log('🎵 [Test] Top tracks to process:');
-        topTracks.slice(0, 5).forEach((track, i) => {
+        tracks.slice(0, 5).forEach((track, i) => {
           console.log(`🎵 [Test]   ${i + 1}. "${track.name}" by ${track.artists[0].name}`);
         });
-        if (topTracks.length > 5) {
-          console.log(`🎵 [Test]   ... and ${topTracks.length - 5} more`);
+        if (tracks.length > 5) {
+          console.log(`🎵 [Test]   ... and ${tracks.length - 5} more`);
         }
         
         console.log(`\n🎵 [Test] ===============================================`);
@@ -157,8 +162,14 @@ export default function App() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
       
+      const existing = await supabase.storage.from('lyrics-bucket').list(user.id, { limit: 1000 });
+      const existingSet = new Set(existing.data?.map(f=>f.name.replace('.txt','')));
       const tracks = await getTopTracks(accessToken, limit, timeRange);
+      console.log(`🎵 [Test] Found ${tracks.length} top tracks; ${existingSet.size} have lyrics already`);
       console.log(`🎵 [Test] Processing ${tracks.length} top tracks`);
+      
+      // Debug: show what we're checking
+      console.log('[Test] Existing file slugs (first 10):', Array.from(existingSet).slice(0, 10).join(', '));
       
       // Process all tracks (limit already applied)
       const tracksToProcess = tracks;
@@ -170,41 +181,58 @@ export default function App() {
         const trackName = track.name;
         const artistName = track.artists[0].name;
         
+        const safe = (str)=>str.toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'_');
+        const fileSafe = `${safe(artistName)}-${safe(trackName)}`;
+        const fileName = `${user.id}/${fileSafe}.txt`;
+
+        // Debug: show what we're checking
+        console.log(`[Test] Checking "${fileSafe}" against existing slugs…`);
+        existingSet.forEach(slug => {
+          const longest = slug.split(/[_-]/).sort((a,b) => b.length - a.length)[0];
+          // console.log(`   ↪ ${slug} (longest="${longest}") → ${fileSafe.includes(longest) ? 'MATCH' : 'no match'}`);
+        });
+
+        if (existingSet.has(fileSafe)) {
+          console.log(`[Test] Skip – direct filename match`);
+          continue;
+        }
+
         console.log(`🎵 [Test] Processing track ${tracksProcessed}: "${trackName}" by ${artistName}`);
-        
+
         try {
           const lyrics = await fetchLyrics(trackName, artistName);
-          
+          console.log("Got lyrics", lyrics);
+
+          const content = lyrics ? lyrics : new Blob([''], { type: 'text/plain' });
+
           if (lyrics) {
             lyricsFound++;
-            console.log(`✅ [Test] Found lyrics! Length: ${lyrics.length} characters`);
-            
-            const fileName = `${user.id}/${track.id}.txt`;
-            const { error } = await supabase.storage
-              .from('lyrics-bucket')
-              .upload(fileName, lyrics, { upsert: true, contentType: 'text/plain' });
-            
-            if (error) {
-              console.error(`❌ [Test] Upload failed:`, error.message);
-            } else {
-              lyricsUploaded++;
-              console.log(`📁 [Test] Successfully uploaded to: ${fileName}`);
-            }
           } else {
-            console.log(`❌ [Test] No lyrics found for "${trackName}"`);
+            console.log(`❌ [Test] No lyrics found – uploading placeholder`);
           }
-        } catch (error) {
-          console.error(`❌ [Test] Error processing "${trackName}":`, error.message);
+
+          const { error } = await supabase.storage
+            .from('lyrics-bucket')
+            .upload(fileName, content, { upsert: true, contentType: 'text/plain' });
+
+          if (error) {
+            console.error(`❌ [Test] Upload failed:`, error.message);
+          } else {
+            lyricsUploaded++;
+            console.log(`📁 [Test] Uploaded: ${fileName}`);
+          }
+        } catch (err) {
+          console.error(`❌ [Test] Error processing "${trackName}":`, err.message);
         }
-        
+
         // Small delay between tracks
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
     } catch (error) {
       console.error(`❌ [Test] Top tracks sync error:`, error.message);
     }
-    
+
     return { tracksProcessed, lyricsFound, lyricsUploaded };
   };
 

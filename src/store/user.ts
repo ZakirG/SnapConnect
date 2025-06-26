@@ -68,12 +68,25 @@ export async function hydrateSpotifyTokens(store: any) {
     const data = await loadSecure('spotify_tokens');
     if (!data) return;
     const parsed = JSON.parse(data);
-    if (parsed.expiresAt && parsed.expiresAt > Date.now()) {
+    const now = Date.now();
+    if (parsed.expiresAt && parsed.expiresAt > now) {
+      // Token still valid
       store.setState({
         spotifyAccessToken: parsed.accessToken,
         spotifyRefreshToken: parsed.refreshToken,
         spotifyExpires: parsed.expiresAt,
       });
+    } else if (parsed.refreshToken) {
+      // Attempt refresh
+      const { refreshAccessToken } = await import('../services/spotify');
+      const refreshed = await refreshAccessToken(parsed.refreshToken);
+      if (refreshed) {
+        store.getState().setSpotifyTokens(
+          refreshed.accessToken,
+          refreshed.refreshToken || parsed.refreshToken,
+          refreshed.expiresIn,
+        );
+      }
     }
   } catch {}
 } 

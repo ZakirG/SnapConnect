@@ -286,15 +286,16 @@ export async function syncPlaylistLyrics(playlistId: string, accessToken: string
         const lyrics = await fetchLyrics(trackName, artistName);
         
         if (!lyrics) {
-          console.log(`[Spotify] No lyrics found for "${trackName}"`);
+          console.log(`[Spotify] No lyrics found for "${trackName}" – uploading empty placeholder`);
           continue;
         }
         
         // Upload to Supabase storage
         const fileName = `${userId}/${trackId}.txt`;
+        const contentToUpload = lyrics ? lyrics : new Blob([''], { type: 'text/plain' });
         const { data, error } = await supabase.storage
           .from('lyrics-bucket')
-          .upload(fileName, lyrics, { 
+          .upload(fileName, contentToUpload, { 
             upsert: true,
             contentType: 'text/plain'
           });
@@ -347,9 +348,24 @@ export async function syncTopTracksLyrics(
     
     const userId = user.id;
     
+    // List existing lyric files to know which tracks are already processed
+    const existing = await supabase.storage.from('lyrics-bucket').list(userId, { limit: 1000 });
+    const alreadyProcessed = new Set<string>();
+    if (existing.data) {
+      existing.data.forEach((f: any) => {
+        const id = f.name.replace('.txt', '');
+        alreadyProcessed.add(id);
+      });
+    }
+    console.log(`[Spotify] Bucket scan complete → ${alreadyProcessed.size} lyric files found`);
+
+    if (existing.data && existing.data.length) {
+      console.log('[Spotify] Existing lyric files (sample):', existing.data.slice(0, 10).map((f:any)=>f.name).join(', '));
+    }
+
     // Fetch user's top tracks
     const tracks = await getTopTracks(accessToken, limit, timeRange);
-    console.log(`[Spotify] Found ${tracks.length} top tracks to process`);
+    console.log(`[Spotify] Found ${tracks.length} top tracks; ${alreadyProcessed.size} have lyrics already`);
     
     let successCount = 0;
     let errorCount = 0;
@@ -365,6 +381,29 @@ export async function syncTopTracksLyrics(
       const artistName = track.artists[0].name;
       const trackId = track.id;
       
+      const fileSafeName = `${sanitize(artistName)}-${sanitize(trackName)}`;
+      const fileName = `${userId}/${fileSafeName}.txt`;
+      
+      // Direct match
+      if (alreadyProcessed.has(fileSafeName)) {
+        console.log(`[Spotify] Skip – direct filename match for "${trackName}"`);
+        continue;
+      }
+
+      // Fuzzy match via longest word
+      let fuzzyMatched = false;
+      for (const existingSlug of alreadyProcessed) {
+        const words = existingSlug.split(/[_-]/).filter(Boolean);
+        if (!words.length) continue;
+        const longest = words.sort((a,b)=>b.length-a.length)[0];
+        if (fileSafeName.includes(longest)) {
+          console.log(`[Spotify] Skip – fuzzy match (longest word "${longest}") between ${fileSafeName} and bucket file ${existingSlug}`);
+          fuzzyMatched = true;
+          break;
+        }
+      }
+      if (fuzzyMatched) continue;
+      
       try {
         console.log(`[Spotify] Processing: "${trackName}" by ${artistName}`);
         
@@ -372,15 +411,15 @@ export async function syncTopTracksLyrics(
         const lyrics = await fetchLyrics(trackName, artistName);
         
         if (!lyrics) {
-          console.log(`[Spotify] No lyrics found for "${trackName}"`);
+          console.log(`[Spotify] No lyrics found for "${trackName}" – uploading empty placeholder`);
           continue;
         }
         
         // Upload to Supabase storage
-        const fileName = `${userId}/${trackId}.txt`;
+        const contentToUpload = lyrics ? lyrics : new Blob([''], { type: 'text/plain' });
         const { data, error } = await supabase.storage
           .from('lyrics-bucket')
-          .upload(fileName, lyrics, { 
+          .upload(fileName, contentToUpload, { 
             upsert: true,
             contentType: 'text/plain'
           });
@@ -410,6 +449,39 @@ export async function syncTopTracksLyrics(
   }
 }
 
+/**
+ * Refreshes a Spotify access token using the stored refresh token.
+ *
+ * @param refreshToken Spotify refresh token
+ * @returns { accessToken, expiresIn, refreshToken? } or null on failure
+ */
+export async function refreshAccessToken(refreshToken: string): Promise<null | { accessToken: string; expiresIn: number; refreshToken?: string; }> {
+  console.log('[Spotify] Attempting token refresh');
+
+  const res = await fetch(TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:
+      `client_id=${CLIENT_ID}` +
+      `&grant_type=refresh_token` +
+      `&refresh_token=${refreshToken}`,
+  });
+
+  if (!res.ok) {
+    console.error('[Spotify] Token refresh failed', await res.text());
+    return null;
+  }
+
+  const json = await res.json();
+  console.log('[Spotify] Token refresh success');
+
+  return {
+    accessToken: json.access_token,
+    expiresIn: json.expires_in,
+    refreshToken: json.refresh_token, // may be undefined
+  };
+}
+
 /** Utility: Generate a random ASCII string for PKCE. */
 function generateRandomString(length: number): string {
   let text = '';
@@ -424,4 +496,13 @@ function generateRandomString(length: number): string {
 /** Utility: Convert standard base64 → URL-safe base64 (no padding). */
 function base64ToBase64Url(b64: string) {
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/** Utility: sanitize string for filename */
+function sanitize(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '_');
 } 
