@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Alert, Text, FlatList } from 'react-native';
+import { View, Alert, Text, FlatList, ActivityIndicator } from 'react-native';
 import { Button } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 import { useUserStore } from '../../store/user';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { linkAccount, getPlaylists } from '../../services/spotify';
+import { linkAccount, getPlaylists, syncTopTracksLyrics, EXPECTED_SONG_COUNT } from '../../services/spotify';
 
 /**
  * A screen that displays user profile information and a logout button.
@@ -16,6 +16,8 @@ const ProfileScreen = ({ navigation }) => {
   const { user, logout, spotifyAccessToken, setSpotifyTokens } = useUserStore();
   const [playlists, setPlaylists] = useState([]);
   const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
+  const [lyricsStatus, setLyricsStatus] = useState('idle'); // 'idle', 'checking', 'syncing', 'complete', 'already-collected'
+  const [lyricsCount, setLyricsCount] = useState(0);
 
   /**
    * Handles the user logout process.
@@ -39,8 +41,9 @@ const ProfileScreen = ({ navigation }) => {
       if (!tokens) return; // User cancelled or error.
       setSpotifyTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
       console.log('[ProfileScreen] Spotify tokens stored');
-      // Immediately fetch playlists
+      // Immediately fetch playlists and start lyrics sync
       await fetchAndSetPlaylists(tokens.accessToken);
+      await handleAutoSyncLyrics(tokens.accessToken);
     } catch (err) {
       console.error('[ProfileScreen] connectSpotify error', err);
       Alert.alert('Spotify Linking Failed', err.message);
@@ -59,11 +62,93 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const checkLyricsStatus = async () => {
+    if (!spotifyAccessToken) return;
+    
+    setLyricsStatus('checking');
+    try {
+      // Check how many lyric files exist for this user
+      const { data: files, error } = await supabase.storage
+        .from('lyrics-bucket')
+        .list(user.id, { limit: 1000 });
+      
+      if (error) {
+        console.error('[ProfileScreen] Error checking lyrics:', error);
+        setLyricsStatus('idle');
+        return;
+      }
+      
+      const count = files?.length || 0;
+      setLyricsCount(count);
+      
+      if (count >= EXPECTED_SONG_COUNT) {
+        setLyricsStatus('already-collected');
+        return false; // Don't need to sync
+      } else if (count > 0) {
+        setLyricsStatus('partial');
+        return true; // Need to sync more
+      } else {
+        setLyricsStatus('idle');
+        return true; // Need to sync
+      }
+    } catch (error) {
+      console.error('[ProfileScreen] Error checking lyrics status:', error);
+      setLyricsStatus('idle');
+      return true; // Default to sync needed
+    }
+  };
+
+  const handleAutoSyncLyrics = async (accessToken) => {
+    if (!accessToken) return;
+    
+    // First check if we need to sync
+    const needsSync = await checkLyricsStatus();
+    if (!needsSync) {
+      console.log('[ProfileScreen] Lyrics already collected, skipping sync');
+      return;
+    }
+    
+    setLyricsStatus('syncing');
+    try {
+      await syncTopTracksLyrics(accessToken, 50, 10, 'medium_term');
+      setLyricsStatus('complete');
+      // Update the count after sync
+      setTimeout(async () => {
+        await checkLyricsStatus();
+      }, 1000);
+    } catch (error) {
+      console.error('[ProfileScreen] Error syncing lyrics:', error);
+      setLyricsStatus('idle');
+    }
+  };
+
   useEffect(() => {
     if (spotifyAccessToken) {
       fetchAndSetPlaylists(spotifyAccessToken);
+      handleAutoSyncLyrics(spotifyAccessToken);
     }
   }, [spotifyAccessToken]);
+
+  const getLyricsStatusText = () => {
+    switch (lyricsStatus) {
+      case 'checking':
+        return 'Checking for lyrics...';
+      case 'syncing':
+        return 'Retrieving lyrics...';
+      case 'complete':
+        return `All lyrics for your top ${EXPECTED_SONG_COUNT} songs collected!`;
+      case 'already-collected':
+        return `Lyrics already collected (${lyricsCount} songs)`;
+      case 'partial':
+        return `${lyricsCount} lyrics retrieved - sync for more`;
+      default:
+        return null;
+    }
+  };
+
+  const shouldShowSpinner = () => {
+    return lyricsStatus === 'checking' || lyricsStatus === 'syncing';
+  };
 
   return (
     <View className="flex-1 bg-background">
@@ -108,6 +193,26 @@ const ProfileScreen = ({ navigation }) => {
             onPress={handleConnectSpotify}
             style={{ width: '100%' }}
           />
+        )}
+
+        {/* Lyrics Status Indicator */}
+        {spotifyAccessToken && getLyricsStatusText() && (
+          <View className="w-full items-center" style={{ gap: 12 }}>
+            <View className="flex-row items-center" style={{ gap: 8 }}>
+              {shouldShowSpinner() && (
+                <ActivityIndicator size="small" color="#6366f1" />
+              )}
+              <Text className="text-gray-600 text-center text-sm">
+                {getLyricsStatusText()}
+              </Text>
+            </View>
+            
+            {lyricsStatus === 'syncing' && (
+              <Text className="text-gray-400 text-xs text-center">
+                This may take a few minutes...
+              </Text>
+            )}
+          </View>
         )}
 
         {/* Playlist List – scrollable panel */}

@@ -92,35 +92,10 @@ export default function App() {
         console.log('🎵 [Test] STARTING LYRICS COLLECTION TEST');
         console.log('🎵 [Test] ===============================================');
         
-        console.log('🎵 [Test] Step 1: Fetching your top 20 Spotify tracks...');
-        const { data: { user } } = await supabase.auth.getUser();
-        const existing = await supabase.storage.from('lyrics-bucket').list(user.id, { limit: 1000 });
-        const existingSet = new Set(existing.data?.map(f=>f.name.replace('.txt','')));
-        const tracks = await getTopTracks(spotifyAccessToken, 50, 'medium_term');
+        console.log('🎵 [Test] Running full sync with top tracks + tracks from 2 recent playlists...');
         
-        console.log(`🎵 [Test] Found ${tracks.length} top tracks; ${existingSet.size} have lyrics already`);
-        console.log(`🎵 [Test] Processing ${tracks.length} top tracks`);
-        
-        console.log('🎵 [Test] Top tracks to process:');
-        tracks.slice(0, 5).forEach((track, i) => {
-          console.log(`🎵 [Test]   ${i + 1}. "${track.name}" by ${track.artists[0].name}`);
-        });
-        if (tracks.length > 5) {
-          console.log(`🎵 [Test]   ... and ${tracks.length - 5} more`);
-        }
-        
-        console.log(`\n🎵 [Test] ===============================================`);
-        console.log(`🎵 [Test] PROCESSING TOP TRACKS LYRICS`);
-        console.log(`🎵 [Test] ===============================================`);
-        
-        try {
-          const result = await syncTopTracksLyricsWithProgress(spotifyAccessToken, 50, 'medium_term');
-          
-          console.log(`✅ [Test] Completed top tracks processing`);
-          console.log(`📊 [Test] Final stats: ${result.tracksProcessed} tracks, ${result.lyricsFound} lyrics found, ${result.lyricsUploaded} uploaded`);
-        } catch (error) {
-          console.error(`❌ [Test] Failed to sync top tracks lyrics:`, error.message);
-        }
+        // Use the actual syncTopTracksLyrics function that includes recent playlist tracks
+        await syncTopTracksLyrics(spotifyAccessToken, 50, 10, 'medium_term');
         
         console.log(`\n🎵 [Test] ===============================================`);
         console.log('🎉 [Test] LYRICS COLLECTION TEST COMPLETED!');
@@ -148,93 +123,6 @@ export default function App() {
       setTimeout(checkForSpotify, 1000);
     }
   }, [isLoggedIn]);
-
-  // Enhanced sync function with progress reporting for top tracks
-  const syncTopTracksLyricsWithProgress = async (accessToken, limit, timeRange) => {
-    const { getTopTracks } = await import('./src/services/spotify');
-    const { fetchLyrics } = await import('./src/services/genius');
-    
-    let tracksProcessed = 0;
-    let lyricsFound = 0;
-    let lyricsUploaded = 0;
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-      
-      const existing = await supabase.storage.from('lyrics-bucket').list(user.id, { limit: 1000 });
-      const existingSet = new Set(existing.data?.map(f=>f.name.replace('.txt','')));
-      const tracks = await getTopTracks(accessToken, limit, timeRange);
-      console.log(`🎵 [Test] Found ${tracks.length} top tracks; ${existingSet.size} have lyrics already`);
-      console.log(`🎵 [Test] Processing ${tracks.length} top tracks`);
-      
-      // Debug: show what we're checking
-      console.log('[Test] Existing file slugs (first 10):', Array.from(existingSet).slice(0, 10).join(', '));
-      
-      // Process all tracks (limit already applied)
-      const tracksToProcess = tracks;
-      
-      for (const track of tracksToProcess) {
-        if (!track?.name || !track?.artists?.[0]?.name) continue;
-        
-        tracksProcessed++;
-        const trackName = track.name;
-        const artistName = track.artists[0].name;
-        
-        const safe = (str)=>str.toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'_');
-        const fileSafe = `${safe(artistName)}-${safe(trackName)}`;
-        const fileName = `${user.id}/${fileSafe}.txt`;
-
-        // Debug: show what we're checking
-        console.log(`[Test] Checking "${fileSafe}" against existing slugs…`);
-        existingSet.forEach(slug => {
-          const longest = slug.split(/[_-]/).sort((a,b) => b.length - a.length)[0];
-          // console.log(`   ↪ ${slug} (longest="${longest}") → ${fileSafe.includes(longest) ? 'MATCH' : 'no match'}`);
-        });
-
-        if (existingSet.has(fileSafe)) {
-          console.log(`[Test] Skip – direct filename match`);
-          continue;
-        }
-
-        console.log(`🎵 [Test] Processing track ${tracksProcessed}: "${trackName}" by ${artistName}`);
-
-        try {
-          const lyrics = await fetchLyrics(trackName, artistName);
-          // console.log("Got lyrics", lyrics);
-
-          const content = lyrics ? lyrics : new Blob([''], { type: 'text/plain' });
-
-          if (lyrics) {
-            lyricsFound++;
-          } else {
-            console.log(`❌ [Test] No lyrics found – uploading placeholder`);
-          }
-
-          const { error } = await supabase.storage
-            .from('lyrics-bucket')
-            .upload(fileName, content, { upsert: true, contentType: 'text/plain' });
-
-          if (error) {
-            console.error(`❌ [Test] Upload failed:`, error.message);
-          } else {
-            lyricsUploaded++;
-            console.log(`📁 [Test] Uploaded: ${fileName}`);
-          }
-        } catch (err) {
-          console.error(`❌ [Test] Error processing "${trackName}":`, err.message);
-        }
-
-        // Small delay between tracks
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-    } catch (error) {
-      console.error(`❌ [Test] Top tracks sync error:`, error.message);
-    }
-
-    return { tracksProcessed, lyricsFound, lyricsUploaded };
-  };
 
   console.log('Render App, isLoggedIn =', isLoggedIn);
 

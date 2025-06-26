@@ -20,6 +20,9 @@ import { fetchLyrics } from './genius';
 import { supabase } from './supabase/config';
 import { useUserStore } from '../store/user';
 
+/** Configuration - Easy to change expected song count */
+export const EXPECTED_SONG_COUNT = 70; // 50 top tracks + 10 from recent playlist 1 + 10 from recent playlist 2
+
 /** Spotify's OAuth endpoints */
 const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
@@ -326,18 +329,20 @@ export async function syncPlaylistLyrics(playlistId: string, accessToken: string
 }
 
 /**
- * Syncs lyrics for the user's top tracks to Supabase storage.
+ * Syncs lyrics for the user's top tracks plus recent playlist tracks to Supabase storage.
  *
  * @param accessToken Spotify access token
- * @param limit Number of top tracks to process (default: 20)
+ * @param topTracksLimit Number of top tracks to process (default: 50)
+ * @param recentPlaylistLimit Number of recent playlist tracks to process per playlist (default: 10)
  * @param timeRange Time frame for top tracks (default: medium_term)
  */
 export async function syncTopTracksLyrics(
   accessToken: string,
-  limit: number = 20,
+  topTracksLimit: number = 50,
+  recentPlaylistLimit: number = 10,
   timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term'
 ): Promise<void> {
-  console.log(`[Spotify] Starting lyrics sync for top ${limit} tracks (${timeRange})`);
+  console.log(`[Spotify] Starting lyrics sync for top ${topTracksLimit} tracks + ${recentPlaylistLimit} tracks from 2 recent playlists (${timeRange})`);
   
   try {
     // Get current user ID
@@ -364,14 +369,56 @@ export async function syncTopTracksLyrics(
     }
 
     // Fetch user's top tracks
-    const tracks = await getTopTracks(accessToken, limit, timeRange);
-    console.log(`[Spotify] Found ${tracks.length} top tracks; ${alreadyProcessed.size} have lyrics already`);
+    const topTracks = await getTopTracks(accessToken, topTracksLimit, timeRange);
+    console.log(`[Spotify] Found ${topTracks.length} top tracks`);
+    
+    // Fetch recent playlist tracks from the last 2 playlists
+    let recentTracks = [];
+    try {
+      const playlists = await getPlaylists(accessToken);
+      if (playlists.length > 0) {
+        // Get tracks from the last 2 most recent playlists
+        const playlistsToProcess = playlists.slice(0, 2); // Take first 2 playlists (most recent)
+        
+        for (let i = 0; i < playlistsToProcess.length; i++) {
+          const playlist = playlistsToProcess[i];
+          try {
+            const recentPlaylistItems = await getTracks(playlist.id, accessToken);
+            // Extract actual track objects from playlist items and take the most recent tracks
+            const playlistTracks = recentPlaylistItems
+              .map(item => item.track) // Extract track from playlist item
+              .filter(track => track && track.name && track.artists?.[0]?.name) // Filter out invalid tracks
+              .slice(0, recentPlaylistLimit);
+            
+            console.log(`[Spotify] Found ${playlistTracks.length} recent tracks from playlist ${i + 1}: "${playlist.name}"`);
+            recentTracks.push(...playlistTracks);
+          } catch (error) {
+            console.warn(`[Spotify] Failed to fetch tracks from playlist "${playlist.name}":`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[Spotify] Failed to fetch recent playlist tracks:', error);
+    }
+    
+    // Combine all tracks, removing duplicates by track ID
+    const allTracks = [...topTracks];
+    const topTrackIds = new Set(topTracks.map(t => t.id));
+    
+    for (const track of recentTracks) {
+      if (!topTrackIds.has(track.id)) {
+        allTracks.push(track);
+      }
+    }
+    
+    console.log(`[Spotify] Total tracks to process: ${allTracks.length} (${topTracks.length} top + ${allTracks.length - topTracks.length} recent unique)`);
+    console.log(`[Spotify] Already processed: ${alreadyProcessed.size} tracks`);
     
     let successCount = 0;
     let errorCount = 0;
     
     // Process each track
-    for (const track of tracks) {
+    for (const track of allTracks) {
       if (!track || !track.name || !track.artists?.[0]?.name) {
         console.warn('[Spotify] Skipping track with missing data');
         continue;
@@ -412,7 +459,6 @@ export async function syncTopTracksLyrics(
         
         if (!lyrics) {
           console.log(`[Spotify] No lyrics found for "${trackName}" – uploading empty placeholder`);
-          continue;
         }
         
         // Upload to Supabase storage
@@ -441,10 +487,10 @@ export async function syncTopTracksLyrics(
       }
     }
     
-    console.log(`[Spotify] Top tracks lyrics sync complete. Success: ${successCount}, Errors: ${errorCount}`);
+    console.log(`[Spotify] Combined tracks lyrics sync complete. Success: ${successCount}, Errors: ${errorCount}`);
     
   } catch (error) {
-    console.error('[Spotify] Failed to sync top tracks lyrics:', error);
+    console.error('[Spotify] Failed to sync combined tracks lyrics:', error);
     throw error;
   }
 }
