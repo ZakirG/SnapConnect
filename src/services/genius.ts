@@ -76,7 +76,7 @@ export async function fetchLyrics(track: string, artist: string): Promise<string
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise<null>((resolve) => {
       setTimeout(() => {
-        console.error('[Genius] Request timed out after 10 seconds');
+        console.log('[Genius] Request timed out after 10 seconds');
         resolve(null);
       }, 10000);
     });
@@ -92,6 +92,30 @@ export async function fetchLyrics(track: string, artist: string): Promise<string
     }
     
     console.log(`[Genius] Raw lyrics length: ${lyrics.length} characters`);
+    
+    // Check for nonsense responses (like movie scripts for instrumentals)
+    // If lyrics are more than 4,000 characters, they're likely wrong content
+    if (lyrics.length > 4000) {
+      console.warn(`[Genius] Lyrics too long (${lyrics.length} chars) - likely nonsense content for instrumental. Skipping.`);
+      return null;
+    }
+    
+    // Check if lyrics contain "instrumental" - skip instrumentals
+    const lyricsLower = lyrics.toLowerCase();
+    if (lyricsLower.includes('instrumental')) {
+      console.warn(`[Genius] Lyrics contain "instrumental" - skipping instrumental track.`);
+      return null;
+    }
+    
+    // Check if song title appears in lyrics - if not, likely wrong song
+    const trackLower = track.toLowerCase();
+    const trackWords = trackLower.split(/\s+/).filter(word => word.length > 2); // Only check words longer than 2 chars
+    const hasTrackReference = trackWords.every(word => lyricsLower.includes(word));
+    
+    if (!hasTrackReference && trackWords.length > 0) {
+      console.warn(`[Genius] Song title "${track}" not found in lyrics - likely wrong match. Skipping.`);
+      return null;
+    }
     
     // Clean the lyrics
     const cleanedLyrics = cleanLyrics(lyrics);
@@ -136,6 +160,12 @@ function cleanLyrics(rawLyrics: string): string {
     
     return true;
   });
+  
+  // Remove the first line (often contains metadata or title info)
+  if (filteredLines.length > 1) {
+    console.log(`[Genius] Removing first line: "${filteredLines[0].substring(0, 50)}..."`);
+    filteredLines.shift();
+  }
   
   // Rejoin lines and clean up extra whitespace
   cleaned = filteredLines
