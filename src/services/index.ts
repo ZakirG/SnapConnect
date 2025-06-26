@@ -7,3 +7,4 @@ export * from './snaps';
 // Import it directly via "import { postStory } from '../services/stories'" instead
 // of using the barrel file to avoid name collisions.
 export * from './spotify';
+export * from './genius';

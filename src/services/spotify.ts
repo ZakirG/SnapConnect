@@ -16,6 +16,9 @@ import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+import { fetchLyrics } from './genius';
+import { supabase } from './supabase/config';
+import { useUserStore } from '../store/user';
 
 /** Spotify's OAuth endpoints */
 const AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
@@ -25,6 +28,7 @@ const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 const SCOPES = [
   'playlist-read-private',
   'playlist-read-collaborative',
+  'user-top-read',
 ];
 
 /** Client ID is injected via environment variables to avoid hard-coding secrets. */
@@ -202,6 +206,208 @@ export async function getTracks(playlistId: string, accessToken: string) {
 
   const data = await res.json();
   return data.items;
+}
+
+/**
+ * Gets the user's top tracks based on calculated affinity.
+ *
+ * @param accessToken Spotify access token
+ * @param limit Number of tracks to return (default: 20, max: 50)
+ * @param timeRange Time frame for affinity calculation (short_term, medium_term, long_term)
+ * @returns Array of top tracks
+ */
+export async function getTopTracks(
+  accessToken: string, 
+  limit: number = 20,
+  timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term'
+) {
+  console.log(`[Spotify] Fetching user's top ${limit} tracks (${timeRange})`);
+  
+  const res = await fetch(
+    `https://api.spotify.com/v1/me/top/tracks?limit=${limit}&time_range=${timeRange}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    console.error('[Spotify] Failed to fetch top tracks', res.status);
+    throw new Error('Failed to fetch top tracks');
+  }
+
+  const data = await res.json();
+  console.log(`[Spotify] Retrieved ${data.items.length} top tracks`);
+  return data.items; // Returns array of track objects directly
+}
+
+/**
+ * Syncs lyrics for all tracks in a playlist to Supabase storage.
+ *
+ * @param playlistId Spotify playlist ID
+ * @param accessToken Spotify access token
+ */
+export async function syncPlaylistLyrics(playlistId: string, accessToken: string): Promise<void> {
+  console.log(`[Spotify] Starting lyrics sync for playlist ${playlistId}`);
+  
+  try {
+    // Get current user ID
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const userId = user.id;
+    
+    // Fetch tracks from the playlist
+    const tracks = await getTracks(playlistId, accessToken);
+    console.log(`[Spotify] Found ${tracks.length} tracks to process`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Process each track
+    for (const item of tracks) {
+      const track = item.track;
+      if (!track || !track.name || !track.artists?.[0]?.name) {
+        console.warn('[Spotify] Skipping track with missing data');
+        continue;
+      }
+      
+      const trackName = track.name;
+      const artistName = track.artists[0].name;
+      const trackId = track.id;
+      
+      try {
+        console.log(`[Spotify] Processing: "${trackName}" by ${artistName}`);
+        
+        // Fetch lyrics from Genius
+        const lyrics = await fetchLyrics(trackName, artistName);
+        
+        if (!lyrics) {
+          console.log(`[Spotify] No lyrics found for "${trackName}"`);
+          continue;
+        }
+        
+        // Upload to Supabase storage
+        const fileName = `${userId}/${trackId}.txt`;
+        const { data, error } = await supabase.storage
+          .from('lyrics-bucket')
+          .upload(fileName, lyrics, { 
+            upsert: true,
+            contentType: 'text/plain'
+          });
+        
+        if (error) {
+          console.error(`[Spotify] Failed to upload lyrics for "${trackName}":`, error);
+          errorCount++;
+        } else {
+          console.log(`[Spotify] Successfully uploaded lyrics for "${trackName}"`);
+          successCount++;
+        }
+        
+        // Add small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`[Spotify] Error processing "${trackName}":`, error);
+        errorCount++;
+      }
+    }
+    
+    console.log(`[Spotify] Lyrics sync complete. Success: ${successCount}, Errors: ${errorCount}`);
+    
+  } catch (error) {
+    console.error('[Spotify] Failed to sync playlist lyrics:', error);
+    throw error;
+  }
+}
+
+/**
+ * Syncs lyrics for the user's top tracks to Supabase storage.
+ *
+ * @param accessToken Spotify access token
+ * @param limit Number of top tracks to process (default: 20)
+ * @param timeRange Time frame for top tracks (default: medium_term)
+ */
+export async function syncTopTracksLyrics(
+  accessToken: string,
+  limit: number = 20,
+  timeRange: 'short_term' | 'medium_term' | 'long_term' = 'medium_term'
+): Promise<void> {
+  console.log(`[Spotify] Starting lyrics sync for top ${limit} tracks (${timeRange})`);
+  
+  try {
+    // Get current user ID
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const userId = user.id;
+    
+    // Fetch user's top tracks
+    const tracks = await getTopTracks(accessToken, limit, timeRange);
+    console.log(`[Spotify] Found ${tracks.length} top tracks to process`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Process each track
+    for (const track of tracks) {
+      if (!track || !track.name || !track.artists?.[0]?.name) {
+        console.warn('[Spotify] Skipping track with missing data');
+        continue;
+      }
+      
+      const trackName = track.name;
+      const artistName = track.artists[0].name;
+      const trackId = track.id;
+      
+      try {
+        console.log(`[Spotify] Processing: "${trackName}" by ${artistName}`);
+        
+        // Fetch lyrics from Genius
+        const lyrics = await fetchLyrics(trackName, artistName);
+        
+        if (!lyrics) {
+          console.log(`[Spotify] No lyrics found for "${trackName}"`);
+          continue;
+        }
+        
+        // Upload to Supabase storage
+        const fileName = `${userId}/${trackId}.txt`;
+        const { data, error } = await supabase.storage
+          .from('lyrics-bucket')
+          .upload(fileName, lyrics, { 
+            upsert: true,
+            contentType: 'text/plain'
+          });
+        
+        if (error) {
+          console.error(`[Spotify] Failed to upload lyrics for "${trackName}":`, error);
+          errorCount++;
+        } else {
+          console.log(`[Spotify] Successfully uploaded lyrics for "${trackName}"`);
+          successCount++;
+        }
+        
+        // Add small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`[Spotify] Error processing "${trackName}":`, error);
+        errorCount++;
+      }
+    }
+    
+    console.log(`[Spotify] Top tracks lyrics sync complete. Success: ${successCount}, Errors: ${errorCount}`);
+    
+  } catch (error) {
+    console.error('[Spotify] Failed to sync top tracks lyrics:', error);
+    throw error;
+  }
 }
 
 /** Utility: Generate a random ASCII string for PKCE. */

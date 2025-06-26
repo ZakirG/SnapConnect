@@ -289,17 +289,82 @@ CREATE POLICY "Authenticated users can read snaps" ON storage.objects
 -- --------------------------------------------------
 -- Added: helper to find an existing direct conversation between two users
 CREATE OR REPLACE FUNCTION public.find_conversation_between(user_id_a UUID, user_id_b UUID)
-RETURNS TABLE(id UUID) AS $$
-  SELECT c.id
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  conversation_uuid UUID;
+BEGIN
+  SELECT c.id INTO conversation_uuid
   FROM conversations c
-  JOIN conversation_participants cp1 ON cp1.conversation_id = c.id AND cp1.user_id = user_id_a
-  JOIN conversation_participants cp2 ON cp2.conversation_id = c.id AND cp2.user_id = user_id_b
   WHERE c.type = 'direct'
+    AND EXISTS (
+      SELECT 1 FROM conversation_participants cp1
+      WHERE cp1.conversation_id = c.id AND cp1.user_id = user_id_a
+    )
+    AND EXISTS (
+      SELECT 1 FROM conversation_participants cp2
+      WHERE cp2.conversation_id = c.id AND cp2.user_id = user_id_b
+    )
   LIMIT 1;
-$$ LANGUAGE sql SECURITY DEFINER;
+  
+  RETURN conversation_uuid;
+END;
+$$;
 
 -- Grant execute permission so that callers using the "authenticated" role (i.e. from the client)
 -- can invoke this RPC while preserving RLS rules on underlying tables.
 GRANT EXECUTE ON FUNCTION public.find_conversation_between(UUID, UUID) TO authenticated;
+
+-- --------------------------------------------------
+-- Storage Policies for lyrics-bucket
+-- --------------------------------------------------
+
+-- Create the lyrics-bucket (run this in Supabase Dashboard Storage section first)
+-- Then apply these policies:
+
+-- Policy 1: Allow authenticated users to upload to their own folder
+INSERT INTO storage.policies (id, bucket_id, name, definition, check, command)
+VALUES (
+  'lyrics-bucket-upload-own-folder',
+  'lyrics-bucket',
+  'Users can upload lyrics to their own folder',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  'INSERT'
+) ON CONFLICT (id) DO NOTHING;
+
+-- Policy 2: Allow authenticated users to read their own lyrics
+INSERT INTO storage.policies (id, bucket_id, name, definition, check, command)
+VALUES (
+  'lyrics-bucket-read-own-folder',
+  'lyrics-bucket', 
+  'Users can read lyrics from their own folder',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  'SELECT'
+) ON CONFLICT (id) DO NOTHING;
+
+-- Policy 3: Allow authenticated users to update/delete their own lyrics
+INSERT INTO storage.policies (id, bucket_id, name, definition, check, command)
+VALUES (
+  'lyrics-bucket-update-own-folder',
+  'lyrics-bucket',
+  'Users can update lyrics in their own folder', 
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  'UPDATE'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.policies (id, bucket_id, name, definition, check, command)
+VALUES (
+  'lyrics-bucket-delete-own-folder',
+  'lyrics-bucket',
+  'Users can delete lyrics from their own folder',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  '(bucket_id = ''lyrics-bucket''::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)',
+  'DELETE'
+) ON CONFLICT (id) DO NOTHING;
 
 -- End of SnapConnect schema v2 

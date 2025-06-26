@@ -33,7 +33,14 @@ export const useUserStore = create<UserState>((set) => ({
   user: null,
   isLoggedIn: false,
   setUser: (user) => set({ user, isLoggedIn: !!user }),
-  logout: () => set({ user: null, isLoggedIn: false }),
+  logout: () =>
+    set({
+      user: null,
+      isLoggedIn: false,
+      spotifyAccessToken: null,
+      spotifyRefreshToken: null,
+      spotifyExpires: null,
+    }),
   spotifyAccessToken: null,
   spotifyRefreshToken: null,
   spotifyExpires: null,

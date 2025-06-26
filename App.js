@@ -10,6 +10,10 @@ import { StoriesScreen, ProfileScreen, AddFriendsScreen, StoryViewerScreen } fro
 import { useUserStore } from './src/store/user';
 import { supabase } from './src/services/supabase/config';
 import { FaceDetectionScreen } from './src/screens';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { getTopTracks, syncTopTracksLyrics } from './src/services/spotify';
+import { useUserStore as useUserStoreForTest } from './src/store/user';
 
 const AuthStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -68,11 +72,146 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [setUser]);
 
+  // Test script for lyrics sync (development only)
+  useEffect(() => {
+    const testLyricsSync = async () => {
+      if (!isLoggedIn) return;
+      
+      const { spotifyAccessToken } = useUserStoreForTest.getState();
+      if (!spotifyAccessToken) {
+        console.log('[Test] No Spotify token available for lyrics sync test');
+        return;
+      }
+      
+      try {
+        console.log('🎵 [Test] ===============================================');
+        console.log('🎵 [Test] STARTING LYRICS COLLECTION TEST');
+        console.log('🎵 [Test] ===============================================');
+        
+        console.log('🎵 [Test] Step 1: Fetching your top 20 Spotify tracks...');
+        const topTracks = await getTopTracks(spotifyAccessToken, 50, 'medium_term');
+        
+        console.log(`🎵 [Test] Found ${topTracks.length} top tracks`);
+        console.log('🎵 [Test] Top tracks to process:');
+        topTracks.slice(0, 5).forEach((track, i) => {
+          console.log(`🎵 [Test]   ${i + 1}. "${track.name}" by ${track.artists[0].name}`);
+        });
+        if (topTracks.length > 5) {
+          console.log(`🎵 [Test]   ... and ${topTracks.length - 5} more`);
+        }
+        
+        console.log(`\n🎵 [Test] ===============================================`);
+        console.log(`🎵 [Test] PROCESSING TOP TRACKS LYRICS`);
+        console.log(`🎵 [Test] ===============================================`);
+        
+        try {
+          const result = await syncTopTracksLyricsWithProgress(spotifyAccessToken, 50, 'medium_term');
+          
+          console.log(`✅ [Test] Completed top tracks processing`);
+          console.log(`📊 [Test] Final stats: ${result.tracksProcessed} tracks, ${result.lyricsFound} lyrics found, ${result.lyricsUploaded} uploaded`);
+        } catch (error) {
+          console.error(`❌ [Test] Failed to sync top tracks lyrics:`, error.message);
+        }
+        
+        console.log(`\n🎵 [Test] ===============================================`);
+        console.log('🎉 [Test] LYRICS COLLECTION TEST COMPLETED!');
+        console.log(`📊 [Test] Check Supabase Storage for lyrics files`);
+        console.log('🎵 [Test] ===============================================');
+      } catch (error) {
+        console.error('❌ [Test] Lyrics sync test failed:', error);
+      }
+    };
+    
+    // Only run test if we have Spotify connection
+    if (isLoggedIn) {
+      // Check for Spotify token periodically
+      const checkForSpotify = () => {
+        const { spotifyAccessToken } = useUserStoreForTest.getState();
+        if (spotifyAccessToken) {
+          console.log('🎵 [Test] Spotify token detected! Starting lyrics collection in 2 seconds...');
+          setTimeout(testLyricsSync, 2000);
+        } else {
+          console.log('🎵 [Test] Waiting for Spotify connection...');
+          setTimeout(checkForSpotify, 2000);
+        }
+      };
+      
+      setTimeout(checkForSpotify, 1000);
+    }
+  }, [isLoggedIn]);
+
+  // Enhanced sync function with progress reporting for top tracks
+  const syncTopTracksLyricsWithProgress = async (accessToken, limit, timeRange) => {
+    const { getTopTracks } = await import('./src/services/spotify');
+    const { fetchLyrics } = await import('./src/services/genius');
+    
+    let tracksProcessed = 0;
+    let lyricsFound = 0;
+    let lyricsUploaded = 0;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const tracks = await getTopTracks(accessToken, limit, timeRange);
+      console.log(`🎵 [Test] Processing ${tracks.length} top tracks`);
+      
+      // Process all tracks (limit already applied)
+      const tracksToProcess = tracks;
+      
+      for (const track of tracksToProcess) {
+        if (!track?.name || !track?.artists?.[0]?.name) continue;
+        
+        tracksProcessed++;
+        const trackName = track.name;
+        const artistName = track.artists[0].name;
+        
+        console.log(`🎵 [Test] Processing track ${tracksProcessed}: "${trackName}" by ${artistName}`);
+        
+        try {
+          const lyrics = await fetchLyrics(trackName, artistName);
+          
+          if (lyrics) {
+            lyricsFound++;
+            console.log(`✅ [Test] Found lyrics! Length: ${lyrics.length} characters`);
+            
+            const fileName = `${user.id}/${track.id}.txt`;
+            const { error } = await supabase.storage
+              .from('lyrics-bucket')
+              .upload(fileName, lyrics, { upsert: true, contentType: 'text/plain' });
+            
+            if (error) {
+              console.error(`❌ [Test] Upload failed:`, error.message);
+            } else {
+              lyricsUploaded++;
+              console.log(`📁 [Test] Successfully uploaded to: ${fileName}`);
+            }
+          } else {
+            console.log(`❌ [Test] No lyrics found for "${trackName}"`);
+          }
+        } catch (error) {
+          console.error(`❌ [Test] Error processing "${trackName}":`, error.message);
+        }
+        
+        // Small delay between tracks
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+    } catch (error) {
+      console.error(`❌ [Test] Top tracks sync error:`, error.message);
+    }
+    
+    return { tracksProcessed, lyricsFound, lyricsUploaded };
+  };
+
   console.log('Render App, isLoggedIn =', isLoggedIn);
 
   return (
-    <NavigationContainer>
-      {isLoggedIn ? <MainNavigator /> : <AuthNavigator />}
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        {isLoggedIn ? <MainNavigator /> : <AuthNavigator />}
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
