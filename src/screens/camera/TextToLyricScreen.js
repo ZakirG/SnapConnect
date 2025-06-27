@@ -65,19 +65,24 @@ const TextToLyricScreen = ({ navigation }) => {
 
       // Step 1: Generate 3 catchy tweet variations
       const tweetVariations = await generateTweetVariations(inputText.trim());
+      console.log('[TextToLyric] Generated tweet variations:', tweetVariations);
 
-      // Step 2: Get a lyric for each tweet variation
-      const lyricPromises = tweetVariations.map(tweet => captionToLyric(tweet, 1));
-      const lyricResults = await Promise.allSettled(lyricPromises);
+      // Step 2: Get diverse lyric options using the original input (to get more variety)
+      const diverseLyrics = await captionToLyric(inputText.trim(), 3);
+      console.log('[TextToLyric] Diverse lyrics:', diverseLyrics);
 
       const processedLyrics = [];
 
+      // Ensure we have lyrics to work with
+      const lyricsArray = Array.isArray(diverseLyrics) ? diverseLyrics : (diverseLyrics ? [diverseLyrics] : []);
+
       for (let i = 0; i < tweetVariations.length; i++) {
         const tweet = tweetVariations[i];
-        const lyricResult = lyricResults[i];
+        
+        // Use a different lyric for each tweet if available, otherwise cycle through or fallback
+        const lyricData = lyricsArray[i] || lyricsArray[i % lyricsArray.length] || null;
 
-        if (lyricResult.status === 'fulfilled' && lyricResult.value) {
-          const lyricData = Array.isArray(lyricResult.value) ? lyricResult.value[0] : lyricResult.value;
+        if (lyricData) {
           const { text, artist, track } = lyricData;
           
           // Capitalize the first letter in each word of the artist and track
@@ -93,7 +98,7 @@ const TextToLyricScreen = ({ navigation }) => {
             fullQuote: `${tweet} It's like ${capitalizedArtist} said on ${capitalizedTrack} -- '${text}'.`
           });
         } else {
-          // Fallback if no lyric found for this tweet
+          // Fallback if no lyric found
           processedLyrics.push({
             id: i,
             tweetText: tweet,
@@ -155,6 +160,7 @@ const TextToLyricScreen = ({ navigation }) => {
             <Text className="text-3xl font-bold text-gray-800 text-center">What's on your mind?</Text>
             <Text className="text-lg text-gray-600 text-center px-4">
               We'll find a lyric from your top-played and recent songs matching what you're thinking.
+              Then we'll write your thoughts into a tweet.
             </Text>
           </View>
 
@@ -188,7 +194,7 @@ const TextToLyricScreen = ({ navigation }) => {
           {isLoading && (
             <View className="items-center" style={{ gap: 12 }}>
               <ActivityIndicator size="large" color="#6366f1" />
-              <Text className="text-lg text-gray-600">Creating catchy tweets and finding matching lyrics...</Text>
+              <Text className="text-lg text-gray-600">Finding matching lyrics...</Text>
             </View>
           )}
 
