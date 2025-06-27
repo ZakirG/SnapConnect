@@ -4,9 +4,10 @@
  * displays the result in a text area.
  */
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, Alert, TextInput, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, TextInput, TouchableWithoutFeedback, Keyboard, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Button } from '../../components/neumorphic';
 import { generateCaption } from '../../services/openai';
 import { captionToLyric } from '../../services/rag';
@@ -17,6 +18,37 @@ const SnapLyricScreen = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Writing image caption...');
   const [error, setError] = useState(null);
+
+  /**
+   * Copies the SnapLyric text to the clipboard and shows a confirmation alert
+   */
+  const handleCopyToClipboard = async () => {
+    try {
+      await Clipboard.setStringAsync(snapLyric);
+      Alert.alert('Copied!', 'SnapLyric copied to clipboard');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy to clipboard');
+    }
+  };
+
+  /**
+   * Opens Twitter with the SnapLyric text pre-filled for posting
+   */
+  const handlePostToX = async () => {
+    try {
+      const encodedText = encodeURIComponent(snapLyric);
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+      const canOpen = await Linking.canOpenURL(twitterUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(twitterUrl);
+      } else {
+        Alert.alert('Error', 'Unable to open Twitter');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open Twitter');
+    }
+  };
 
   useEffect(() => {
     const fetchAndProcessMedia = async () => {
@@ -34,15 +66,6 @@ const SnapLyricScreen = ({ route, navigation }) => {
         const generatedCaption = await generateCaption(mediaUri);
         if (!generatedCaption) {
           throw new Error('Failed to generate a caption.');
-        }
-
-        // if the generated caption starts with a quotation mark, remove it
-        if (generatedCaption.startsWith('"')) {
-          generatedCaption = generatedCaption.slice(1);
-        }
-        // if the generated caption ends with a quotation mark, remove it
-        if (generatedCaption.endsWith('"')) {
-          generatedCaption = generatedCaption.slice(0, -1);
         }
 
         // Step 2: Find the lyric using the RAG service
@@ -119,6 +142,22 @@ const SnapLyricScreen = ({ route, navigation }) => {
                 className="w-full h-40 p-4 border border-gray-300 rounded-lg bg-white text-base"
                 style={{ textAlignVertical: 'top' }}
               />
+              <View className="w-full flex-row justify-end items-center" style={{ gap: 8 }}>
+                <TouchableOpacity
+                  onPress={handleCopyToClipboard}
+                  className="p-3"
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="copy-outline" size={24} color="#6366f1" />
+                </TouchableOpacity>
+                <Button
+                  title="Post to X"
+                  variant="secondary"
+                  size="small"
+                  onPress={handlePostToX}
+                  style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                />
+              </View>
             </View>
           )}
         </View>
