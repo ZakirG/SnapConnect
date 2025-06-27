@@ -9,15 +9,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/neumorphic';
 import { generateCaption } from '../../services/openai';
+import { captionToLyric } from '../../services/rag';
 
 const SnapLyricScreen = ({ route, navigation }) => {
   const { mediaUri } = route.params;
-  const [caption, setCaption] = useState('');
+  const [snapLyric, setSnapLyric] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Writing image caption...');
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchCaption = async () => {
+    const fetchAndProcessMedia = async () => {
       if (!mediaUri) {
         setError('No image was provided.');
         setIsLoading(false);
@@ -26,17 +28,37 @@ const SnapLyricScreen = ({ route, navigation }) => {
 
       try {
         setIsLoading(true);
+
+        // Step 1: Generate initial caption
+        setLoadingMessage('Writing image caption...');
         const generatedCaption = await generateCaption(mediaUri);
-        setCaption(generatedCaption);
+        if (!generatedCaption) {
+          throw new Error('Failed to generate a caption.');
+        }
+
+        // Step 2: Find the lyric using the RAG service
+        setLoadingMessage('Finding the perfect lyric...');
+        const lyricResult = await captionToLyric(generatedCaption);
+
+        if (lyricResult) {
+          const { line, artist, track } = lyricResult;
+          const finalQuote = `"${generatedCaption}" It's like ${artist} said on ${track} -- '${line}'.`;
+          setSnapLyric(finalQuote);
+        } else {
+          // Fallback to just the caption if no lyric is found
+          setSnapLyric(`"${generatedCaption}"`);
+          Alert.alert("Couldn't find a matching lyric", "But we still wrote a caption for you!");
+        }
+
       } catch (err) {
         setError(err.message);
-        Alert.alert('Error', 'Could not generate a caption. Please try again.');
+        Alert.alert('Error', 'Could not generate a SnapLyric. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCaption();
+    fetchAndProcessMedia();
   }, [mediaUri]);
 
   return (
@@ -59,7 +81,7 @@ const SnapLyricScreen = ({ route, navigation }) => {
           {isLoading ? (
             <>
               <ActivityIndicator size="large" color="#6366f1" />
-              <Text className="text-lg text-gray-600 mt-4">Writing image caption...</Text>
+              <Text className="text-lg text-gray-600 mt-4">{loadingMessage}</Text>
               <Text className="text-sm text-gray-400 mt-2">This might take a moment.</Text>
             </>
           ) : error ? (
@@ -69,7 +91,6 @@ const SnapLyricScreen = ({ route, navigation }) => {
                 title="Try Again"
                 variant="primary"
                 onPress={() => {
-                  // This is a placeholder for a retry mechanism
                   navigation.goBack();
                 }}
                 style={{ marginTop: 20 }}
@@ -79,8 +100,8 @@ const SnapLyricScreen = ({ route, navigation }) => {
             <View className="w-full items-center" style={{ gap: 16 }}>
               <Text className="text-2xl font-bold">Your SnapLyric</Text>
               <TextInput
-                value={caption}
-                onChangeText={setCaption}
+                value={snapLyric}
+                onChangeText={setSnapLyric}
                 multiline
                 editable
                 className="w-full h-40 p-4 border border-gray-300 rounded-lg bg-white text-base"

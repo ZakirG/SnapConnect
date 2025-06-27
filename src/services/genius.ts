@@ -63,6 +63,12 @@ export async function fetchLyrics(track: string, artist: string): Promise<string
   console.log(`[Genius] Fetching lyrics for "${track}" by ${artist}`);
   
   try {
+    // Check for profanity in the track title before fetching
+    if (filter.isProfane(track)) {
+      console.warn(`[Genius] Skipping track with profane title: "${track}"`);
+      return null;
+    }
+    
     const options = {
       apiKey: GENIUS_TOKEN,
       title: track,
