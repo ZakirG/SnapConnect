@@ -19,23 +19,24 @@ type LyricResponse = {
 };
 
 /**
- * Calls the `caption-to-lyric` Supabase Edge Function to convert an image caption to a relevant song lyric.
+ * Calls the `caption-to-lyric` Supabase Edge Function to convert an image caption to relevant song lyrics.
  *
  * @param {string} caption - The input caption describing an image.
- * @returns {Promise<LyricResponse | null>}
- *          An object with the lyric, track, and artist, or null if an error occurs.
+ * @param {number} count - The number of lyric options to return (defaults to 1).
+ * @returns {Promise<LyricResponse[] | LyricResponse | null>}
+ *          An array of lyrics (if count > 1), a single lyric object (if count = 1), or null if an error occurs.
  */
-export async function captionToLyric(caption: string): Promise<LyricResponse | null> {
-  const user = useUserStore.getState().user;
-  if (!user) {
+export async function captionToLyric(caption: string, count: number = 1): Promise<LyricResponse[] | LyricResponse | null> {
+  const state = useUserStore.getState();
+  if (!state.user) {
     console.error('[RAG] User not found, cannot invoke edge function.');
     return null;
   }
 
   try {
-    console.log('[RAG] Invoking caption-to-lyric edge function with caption:', caption);
+    console.log('[RAG] Invoking caption-to-lyric edge function with caption:', caption, 'count:', count);
     const { data, error } = await supabase.functions.invoke('caption-to-lyric', {
-      body: { caption, userId: user.id },
+      body: { caption, userId: state.user.id, count },
     });
     
     // Log the raw response for debugging

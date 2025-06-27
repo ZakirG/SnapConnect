@@ -56,4 +56,49 @@ export const generateCaption = async (mediaUri: string): Promise<string> => {
     console.error('Error generating caption from OpenAI:', error);
     throw new Error('Failed to generate image caption.');
   }
+};
+
+/**
+ * Generates 3 catchy tweet variations based on the user's input text.
+ *
+ * @param {string} userText - The original text from the user expressing their thoughts/mood.
+ * @returns {Promise<string[]>} A promise that resolves with an array of 3 tweet variations.
+ */
+export const generateTweetVariations = async (userText: string): Promise<string[]> => {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: `Take this personal thought/mood and rephrase it into 3 different catchy, engaging tweet variations. Keep the same core sentiment but make them more Twitter-ready and engaging. Each should be under 200 characters. Do not use emojis.
+          Do not use hashtags. Your tone of writing should be cynical, sarcastic, educated, and funny.
+
+Original text: "${userText}"
+
+Return exactly 3 variations, each on a separate line, with no numbering or extra formatting. Just the tweet text.`,
+        },
+      ],
+      max_tokens: 300,
+      temperature: 0.8, // Higher creativity for varied tweet styles
+    });
+
+    if (response.choices[0].message.content) {
+      const variations = response.choices[0].message.content
+        .split('\n')
+        .filter(line => line.trim())
+        .slice(0, 3); // Ensure we only get 3 variations
+      
+      if (variations.length < 3) {
+        throw new Error('Failed to generate 3 tweet variations');
+      }
+      
+      return variations;
+    } else {
+      throw new Error('Failed to generate tweet variations, received no content.');
+    }
+  } catch (error) {
+    console.error('Error generating tweet variations from OpenAI:', error);
+    throw new Error('Failed to generate tweet variations.');
+  }
 }; 

@@ -32,13 +32,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Extract caption and userId from the request body
-    const { caption, userId } = await req.json();
+    // Extract caption, userId, and count from the request body
+    const { caption, userId, count = 1 } = await req.json();
     if (!caption || !userId) {
       throw new Error('Missing required fields: caption and userId');
     }
 
-    console.log(`[Function] Received request for userId: ${userId}, caption: "${caption}"`);
+    console.log(`[Function] Received request for userId: ${userId}, caption: "${caption}", count: ${count}`);
 
     // Initialize clients and embeddings
     const pineconeApiKey = Deno.env.get('PINECONE_API_KEY');
@@ -55,10 +55,11 @@ Deno.serve(async (req) => {
     const captionEmbedding = await embeddings.embedQuery(caption);
     console.log('[Function] Generated embedding for caption.');
 
-    // 2. Query Pinecone
+    // 2. Query Pinecone - get more results to have variety for multiple options
+    const topK = Math.max(5, count * 3); // Get at least 3x the requested count for variety
     const results = await pineconeIndex.query({
       vector: captionEmbedding,
-      topK: 5,
+      topK: topK,
       filter: { userId: { '$eq': userId } },
       includeMetadata: true,
     });
@@ -90,38 +91,74 @@ Deno.serve(async (req) => {
     }).join('\n');
     console.log(`[Function] Candidate lines for AI selection:\n${candidateLines}`);
 
-    // 4. Use ChatOpenAI to choose the best line
+    // 4. Use ChatOpenAI to choose the best line(s)
     const model = new ChatOpenAI({
       openAIApiKey: Deno.env.get('OPENAI_API_KEY'),
       modelName: 'gpt-4o-mini',
-      temperature: 0.5,
+      temperature: 0.7, // Higher temperature for more variety
     });
 
-    const prompt = `From the following list of song lyrics, choose the single line that best matches the sentiment or theme of this caption: "${caption}".
+    if (count === 1) {
+      // Original logic for single result
+      const prompt = `From the following list of song lyrics, choose the single line that best matches the sentiment or theme of this caption: "${caption}".
 
 Candidate lyrics:
 ${candidateLines}
 
 Return ONLY the full, original candidate line you chose (e.g., "And I think to myself, what a wonderful world." from "What A Wonderful World" by Louis Armstrong). Do not add any extra formatting or explanation.`;
 
-    const response = await model.invoke(prompt);
-    const chosenLineWithContext = response.content as string;
-    console.log(`[Function] AI model chose: ${chosenLineWithContext}`);
+      const response = await model.invoke(prompt);
+      const chosenLineWithContext = response.content as string;
+      console.log(`[Function] AI model chose: ${chosenLineWithContext}`);
 
-    // 5. Find the full metadata for the chosen line
-    const chosenCandidate = candidates.find(c => chosenLineWithContext.includes(c.text));
+      // Find the full metadata for the chosen line
+      const chosenCandidate = candidates.find(c => chosenLineWithContext.includes(c.text));
 
-    if (!chosenCandidate) {
-      throw new Error('Could not match AI response to a candidate lyric.');
+      if (!chosenCandidate) {
+        throw new Error('Could not match AI response to a candidate lyric.');
+      }
+
+      console.log(`[Function] Final selection: "${chosenCandidate.text}" from "${chosenCandidate.track}"`);
+      
+      // Return single result
+      return new Response(JSON.stringify(chosenCandidate), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    } else {
+      // New logic for multiple results
+      const prompt = `From the following list of song lyrics, choose the ${count} lines that best match the sentiment or theme of this caption: "${caption}". Choose diverse options that offer different perspectives or moods.
+
+Candidate lyrics:
+${candidateLines}
+
+Return ONLY the ${count} chosen lines, each on a separate line, using the exact format from the candidates (e.g., "lyric text" from "song" by artist). Do not add numbering, bullets, or extra formatting.`;
+
+      const response = await model.invoke(prompt);
+      const chosenLines = (response.content as string).split('\n').filter(line => line.trim());
+      console.log(`[Function] AI model chose ${chosenLines.length} lines:`, chosenLines);
+
+      // Find metadata for each chosen line
+      const chosenCandidates = [];
+      for (const line of chosenLines.slice(0, count)) {
+        const candidate = candidates.find(c => line.includes(c.text));
+        if (candidate) {
+          chosenCandidates.push(candidate);
+        }
+      }
+
+      if (chosenCandidates.length === 0) {
+        throw new Error('Could not match any AI responses to candidate lyrics.');
+      }
+
+      console.log(`[Function] Final ${chosenCandidates.length} selections:`, chosenCandidates.map(c => `"${c.text}" from "${c.track}"`));
+      
+      // Return multiple results as array
+      return new Response(JSON.stringify(chosenCandidates), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
     }
-
-    console.log(`[Function] Final selection: "${chosenCandidate.text}" from "${chosenCandidate.track}"`);
-    
-    // Return the successful result
-    return new Response(JSON.stringify(chosenCandidate), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
 
   } catch (error) {
     console.error('[Function] Error:', error);
