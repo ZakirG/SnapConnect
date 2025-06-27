@@ -356,18 +356,7 @@ const CameraScreen = ({ navigation }) => {
           );
         })()}
 
-        {/* Debug info moved further down to avoid profile icon */}
-        <View className="absolute top-40 left-4 bg-black/70 p-3 rounded-lg">
-          <Text className="text-white text-xs">
-            Camera: {type} | Faces: {faces.length}
-          </Text>
-          <Text className="text-white text-xs">
-            Filter: {selectedFilter}
-          </Text>
-          <Text className="text-white text-xs">
-            Detection: {faces.length > 0 ? '✅ Working' : '❌ No faces'}
-          </Text>
-        </View>
+
       </CameraView>
     </View>
   );

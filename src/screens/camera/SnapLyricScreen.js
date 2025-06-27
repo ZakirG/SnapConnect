@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Button } from '../../components/neumorphic';
-import { generateCaption } from '../../services/openai';
+import { generateCaption, generateTweetVariations } from '../../services/openai';
 import { captionToLyric } from '../../services/rag';
 
 const SnapLyricScreen = ({ route, navigation }) => {
@@ -68,34 +68,59 @@ const SnapLyricScreen = ({ route, navigation }) => {
           throw new Error('Failed to generate a caption.');
         }
 
-        // Step 2: Find multiple diverse lyrics using the RAG service
-        setLoadingMessage('Finding the perfect lyrics...');
-        const lyricResults = await captionToLyric(generatedCaption, 3);
+        // Step 2: Generate 3 tweet variations from the caption
+        setLoadingMessage('Creating tweet variations...');
+        const tweetVariations = await generateTweetVariations(generatedCaption);
+        console.log('[SnapLyric] Generated tweet variations:', tweetVariations);
+
+        // Step 3: Get diverse lyric options using the original caption
+        setLoadingMessage('Finding matching lyrics...');
+        const diverseLyrics = await captionToLyric(generatedCaption, 3);
+        console.log('[SnapLyric] Diverse lyrics:', diverseLyrics);
 
         const processedLyrics = [];
-        const lyricsArray = Array.isArray(lyricResults) ? lyricResults : (lyricResults ? [lyricResults] : []);
+        const lyricsArray = Array.isArray(diverseLyrics) ? diverseLyrics : (diverseLyrics ? [diverseLyrics] : []);
 
-        if (lyricsArray.length > 0) {
-          lyricsArray.forEach((lyric, index) => {
-            const { text, artist, track } = lyric;
+        for (let i = 0; i < tweetVariations.length; i++) {
+          let tweetCaption = tweetVariations[i];
+          // trim the whitespace from the tweet caption
+          tweetCaption = tweetCaption.trim();
+          
+          // Use a different lyric for each tweet if available, otherwise cycle through or fallback
+          const lyricData = lyricsArray[i] || lyricsArray[i % lyricsArray.length] || null;
+
+          if (lyricData) {
+            const { text, artist, track } = lyricData;
             // capitalize the first letter in each word of the artist and track
             const capitalizedArtist = artist.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
             const capitalizedTrack = track.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-            const finalQuote = `${generatedCaption} It's like ${capitalizedArtist} said on ${capitalizedTrack} -- '${text}'.`;
+            const finalQuote = `${tweetCaption} It's like ${capitalizedArtist} said on ${capitalizedTrack} -- '${text}'.`;
             
             processedLyrics.push({
-              id: index,
-              caption: generatedCaption,
+              id: i,
+              caption: tweetCaption,
               lyricText: text,
               artist: capitalizedArtist,
               track: capitalizedTrack,
               fullQuote: finalQuote
             });
-          });
-          
+          } else {
+            // Fallback if no lyric found
+            processedLyrics.push({
+              id: i,
+              caption: tweetCaption,
+              lyricText: '',
+              artist: '',
+              track: '',
+              fullQuote: tweetCaption
+            });
+          }
+        }
+
+        if (processedLyrics.length > 0) {
           setSnapLyrics(processedLyrics);
         } else {
-          // Fallback to just the caption if no lyrics are found
+          // Ultimate fallback
           setSnapLyrics([{
             id: 0,
             caption: generatedCaption,
@@ -104,7 +129,7 @@ const SnapLyricScreen = ({ route, navigation }) => {
             track: '',
             fullQuote: `"${generatedCaption}"`
           }]);
-          Alert.alert("Couldn't find matching lyrics", "But we still wrote a caption for you!");
+          Alert.alert("Couldn't generate caption variations", "But we still wrote a caption for you!");
         }
 
       } catch (err) {
