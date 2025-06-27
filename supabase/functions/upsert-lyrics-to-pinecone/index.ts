@@ -34,14 +34,20 @@ if (!allEnvsPresent) {
   // We don't return here because Deno.serve is top-level. The error will be caught on client initialization.
 }
 
-// Initialize Supabase client
+// Initialize Supabase client with the service role key for admin-level access.
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Supabase URL or Service Role Key is missing.');
 }
-const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    // Service role key should be used on the server-side to bypass RLS.
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
 
 // Initialize Pinecone
 const pineconeApiKey = Deno.env.get('PINECONE_API_KEY');
@@ -57,45 +63,88 @@ if (!pineconeIndexName) {
 const pineconeIndex = pinecone.index(pineconeIndexName);
 
 Deno.serve(async (req) => {
-  console.log(`Received request: ${req.method}`);
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const logs: string[] = [];
+  const log = (message: any) => {
+    const msgString = typeof message === 'string' ? message : JSON.stringify(message);
+    logs.push(msgString);
+    console.log(message);
+  };
+  const logError = (message: any, ...optionalParams: any[]) => {
+    const msgString = typeof message === 'string' ? message : JSON.stringify(message);
+    const paramsString = optionalParams.map(p => typeof p === 'string' ? p : JSON.stringify(p)).join(' ');
+    logs.push(`[ERROR] ${msgString} ${paramsString}`);
+    console.error(message, ...optionalParams);
+  };
+
   try {
+    log(`Received request: ${req.method}`);
     const { userId } = await req.json();
     if (!userId) {
-      return new Response(JSON.stringify({ error: 'userId is required' }), {
+      logError('Request body missing userId');
+      return new Response(JSON.stringify({ error: 'userId is required', logs }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
 
-    console.log(`Starting lyric upsert for user: ${userId}`);
+    log(`Starting lyric upsert for user: ${userId}`);
 
     // 1. List files in Supabase Storage
-    console.log('Listing files from Supabase Storage...');
+    const BUCKET_NAME = 'lyrics-bucket';
+    log(`Listing files from Supabase Storage in bucket: ${BUCKET_NAME}...`);
+
+    // --- Start Diagnostics ---
+    log('Inspecting root of bucket for user folders...');
+    const { data: rootItems, error: rootListError } = await supabaseClient.storage
+      .from(BUCKET_NAME)
+      .list();
+
+    if (rootListError) {
+      logError('Error listing bucket root:', rootListError.message);
+    } else if (rootItems && rootItems.length > 0) {
+      log(`Found ${rootItems.length} items at the root:`);
+      rootItems.forEach(item => {
+        const itemType = item.id === null ? 'folder' : 'file';
+        log(`- ${item.name} (type: ${itemType})`);
+      });
+    } else {
+      log('The root of the bucket is empty.');
+    }
+    // --- End Diagnostics ---
+
     const { data: files, error: listError } = await supabaseClient.storage
-      .from('lyrics-bucket')
+      .from(BUCKET_NAME)
       .list(userId);
 
-    if (listError) throw listError;
+    if (listError) {
+      logError('Error listing user-specific files:', listError.message);
+      throw listError;
+    }
+
+    if (files) {
+      log(`Found ${files.length} user-specific files:`);
+      files.forEach(file => log(`- ${file.name}`));
+    }
 
     if (!files || files.length === 0) {
-      console.log(`No lyrics found for user ${userId}.`);
-      return new Response(JSON.stringify({ message: 'No lyrics found to process.' }), {
+      log(`No lyrics found for user ${userId}.`);
+      return new Response(JSON.stringify({ message: 'No lyrics found to process.', logs }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
     }
 
-    console.log(`Found ${files.length} lyric files to process.`);
+    log(`Found ${files.length} lyric files to process.`);
 
     // Initialize OpenAI Embeddings
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      // This check is inside the handler, so it can return a proper response.
-      return new Response(JSON.stringify({ error: 'OpenAI API Key is not configured.' }), {
+      logError('OpenAI API Key is not configured.');
+      return new Response(JSON.stringify({ error: 'OpenAI API Key is not configured.', logs }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
@@ -103,26 +152,31 @@ Deno.serve(async (req) => {
     const embeddings = new OpenAIEmbeddings({ openAIApiKey });
 
     for (const file of files) {
-      console.log(`\nProcessing file: ${file.name}`);
+      log(`\nProcessing file: ${file.name}`);
       const { data: blob, error: downloadError } = await supabaseClient.storage
-        .from('lyrics-bucket')
+        .from(BUCKET_NAME)
         .download(`${userId}/${file.name}`);
       
       if (downloadError) {
-        console.error(`Failed to download ${file.name}:`, downloadError.message);
+        logError(`Failed to download ${file.name}:`, downloadError.message);
         continue;
       }
-      console.log(`Successfully downloaded ${file.name}.`);
+      log(`Successfully downloaded ${file.name}.`);
 
       const text = await blob.text();
       const trackId = file.name.replace('.txt', '');
 
       // Split into lines
       const chunks = text.split('\n').filter(line => line.trim() !== '');
-      console.log(`Split file into ${chunks.length} lines.`);
+      log(`Split file into ${chunks.length} lines.`);
+
+      if (chunks.length < 3) {
+        log(`Skipping file ${file.name} because it has fewer than 3 lines.`);
+        continue;
+      }
 
       const vectors = [];
-      console.log('Generating embeddings for each line...');
+      log('Generating embeddings for each line...');
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         const embedding = await embeddings.embedQuery(chunk);
@@ -133,19 +187,19 @@ Deno.serve(async (req) => {
         });
       }
 
-      console.log(`Generated ${vectors.length} vectors. Upserting to Pinecone...`);
+      log(`Generated ${vectors.length} vectors. Upserting to Pinecone...`);
       await pineconeIndex.upsert(vectors);
-      console.log(`Successfully upserted vectors for ${file.name}.`);
+      log(`Successfully upserted vectors for ${file.name}.`);
     }
 
-    console.log('\nFinished processing all lyric files.');
-    return new Response(JSON.stringify({ message: 'Successfully processed and upserted lyrics.' }), {
+    log('\nFinished processing all lyric files.');
+    return new Response(JSON.stringify({ message: 'Successfully processed and upserted lyrics.', logs }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
   } catch (error) {
-    console.error('Error processing request:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    logError('Error processing request:', error);
+    return new Response(JSON.stringify({ error: error.message, logs }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
