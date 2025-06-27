@@ -36,13 +36,25 @@ const SnapLyricScreen = ({ route, navigation }) => {
           throw new Error('Failed to generate a caption.');
         }
 
+        // if the generated caption starts with a quotation mark, remove it
+        if (generatedCaption.startsWith('"')) {
+          generatedCaption = generatedCaption.slice(1);
+        }
+        // if the generated caption ends with a quotation mark, remove it
+        if (generatedCaption.endsWith('"')) {
+          generatedCaption = generatedCaption.slice(0, -1);
+        }
+
         // Step 2: Find the lyric using the RAG service
         setLoadingMessage('Finding the perfect lyric...');
         const lyricResult = await captionToLyric(generatedCaption);
 
         if (lyricResult) {
-          const { line, artist, track } = lyricResult;
-          const finalQuote = `"${generatedCaption}" It's like ${artist} said on ${track} -- '${line}'.`;
+          const { text, artist, track } = lyricResult;
+          // capitalize the first letter in each word of the artist and track
+          const capitalizedArtist = artist.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+          const capitalizedTrack = track.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+          const finalQuote = `${generatedCaption} It's like ${capitalizedArtist} said on ${capitalizedTrack} -- '${text}'.`;
           setSnapLyric(finalQuote);
         } else {
           // Fallback to just the caption if no lyric is found

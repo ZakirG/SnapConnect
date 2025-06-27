@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     // 3. Prepare candidate lyrics for the AI model
     const candidates = results.matches
       .map(match => match.metadata as unknown as LyricMetadata)
-      .filter(metadata => metadata && metadata.text && metadata.track && metadata.artist);
+      .filter(metadata => metadata && metadata.text);
 
     if (candidates.length === 0) {
         return new Response(JSON.stringify({ error: 'No valid lyric candidates found after filtering.' }), {
@@ -83,7 +83,11 @@ Deno.serve(async (req) => {
         });
     }
     
-    const candidateLines = candidates.map(c => `"${c.text}" from "${c.track}" by ${c.artist}`).join('\n');
+    const candidateLines = candidates.map(c => {
+      const trackPart = c.track ? ` from "${c.track}"` : '';
+      const artistPart = c.artist ? ` by ${c.artist}` : '';
+      return `"${c.text}"${trackPart}${artistPart}`;
+    }).join('\n');
     console.log(`[Function] Candidate lines for AI selection:\n${candidateLines}`);
 
     // 4. Use ChatOpenAI to choose the best line

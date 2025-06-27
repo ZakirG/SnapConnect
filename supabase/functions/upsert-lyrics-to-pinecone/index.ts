@@ -7,6 +7,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { Pinecone } from 'npm:@pinecone-database/pinecone';
 import { OpenAIEmbeddings } from 'npm:@langchain/openai';
 import { createClient } from 'npm:@supabase/supabase-js';
+import Filter from 'npm:bad-words';
 
 console.log('Function booting up...');
 
@@ -16,6 +17,7 @@ const requiredEnvs = [
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'PINECONE_API_KEY',
+  'PINECONE_ENVIRONMENT',
   'PINECONE_INDEX',
   'OPENAI_API_KEY',
 ];
@@ -49,12 +51,17 @@ const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-// Initialize Pinecone
+// Initialize Pinecone client (new SDK requires apiKey **and** environment)
 const pineconeApiKey = Deno.env.get('PINECONE_API_KEY');
+
 if (!pineconeApiKey) {
   throw new Error('Pinecone API Key is missing.');
 }
-const pinecone = new Pinecone({ apiKey: pineconeApiKey });
+
+// The latest Pinecone SDK (>=6.x) no longer requires an `environment` param.
+const pinecone = new Pinecone({
+  apiKey: pineconeApiKey,
+});
 
 const pineconeIndexName = Deno.env.get('PINECONE_INDEX');
 if (!pineconeIndexName) {
@@ -166,6 +173,18 @@ Deno.serve(async (req) => {
       const text = await blob.text();
       const trackId = file.name.replace('.txt', '');
 
+      // Derive artist and track name from the file slug (format: artist-track)
+      const [artistSlug, ...trackSlugParts] = trackId.split('-');
+      const artist = artistSlug?.replace(/_/g, ' ') || 'unknown';
+      const track = trackSlugParts.join('-').replace(/_/g, ' ') || 'unknown';
+
+      // Skip songs with profanity in the track title
+      const filter = new Filter();
+      if (filter.isProfane(track)) {
+        log(`Skipping file ${file.name} due to profanity in title.`);
+        continue;
+      }
+
       // Split into lines
       const chunks = text.split('\n').filter(line => line.trim() !== '');
       log(`Split file into ${chunks.length} lines.`);
@@ -183,7 +202,7 @@ Deno.serve(async (req) => {
         vectors.push({
           id: `${trackId}_${i}`,
           values: embedding,
-          metadata: { userId, trackId, text: chunk },
+          metadata: { userId, artist, track, text: chunk },
         });
       }
 
@@ -199,7 +218,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     logError('Error processing request:', error);
-    return new Response(JSON.stringify({ error: error.message, logs }), {
+    return new Response(JSON.stringify({ status: 500, error: error.message, logs }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
