@@ -27,7 +27,7 @@ if (!GENIUS_TOKEN) {
 }
 
 /** Initialize profanity filter */
-const filter = new Filter();
+export const filter = new Filter();
 
 /**
  * Loads custom exclude words from assets/excludeWords.txt and adds them to the filter.

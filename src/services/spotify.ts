@@ -16,7 +16,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
-import { fetchLyrics } from './genius';
+import { fetchLyrics, filter as profanityFilter } from './genius';
 import { supabase } from './supabase/config';
 import { useUserStore } from '../store/user';
 
@@ -348,78 +348,44 @@ export async function syncTopTracksLyrics(
     // Get current user ID
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      throw new Error('User not authenticated');
+        throw new Error('User not authenticated');
     }
     
     const userId = user.id;
-    
-    // List existing lyric files to know which tracks are already processed
-    const existing = await supabase.storage.from('lyrics-bucket').list(userId, { limit: 1000 });
-    const alreadyProcessed = new Set<string>();
-    if (existing.data) {
-      existing.data.forEach((f: any) => {
-        const id = f.name.replace('.txt', '');
-        alreadyProcessed.add(id);
-      });
-    }
-    console.log(`[Spotify] Bucket scan complete → ${alreadyProcessed.size} lyric files found`);
 
-    if (existing.data && existing.data.length) {
-      console.log('[Spotify] Existing lyric files (sample):', existing.data.slice(0, 10).map((f:any)=>f.name).join(', '));
-    }
+    // List existing lyric files to know which tracks are already processed
+    const { data: existingFiles } = await supabase.storage.from('lyrics-bucket').list(userId, { limit: 1000 });
+    const alreadyProcessed = new Set<string>(existingFiles?.map(f => f.name.replace('.txt', '')) || []);
+    console.log(`[Spotify] Bucket scan complete → ${alreadyProcessed.size} lyric files found`);
 
     // Fetch user's top tracks
     const topTracks = await getTopTracks(accessToken, topTracksLimit, timeRange);
     console.log(`[Spotify] Found ${topTracks.length} top tracks`);
-    
-    // Fetch recent playlist tracks from the last 2 playlists
+
+    // Fetch recent playlist tracks
     let recentTracks = [];
-    try {
-      const playlists = await getPlaylists(accessToken);
-      if (playlists.length > 0) {
-        // Get tracks from the last 2 most recent playlists
-        const playlistsToProcess = playlists.slice(0, 2); // Take first 2 playlists (most recent)
-        
-        for (let i = 0; i < playlistsToProcess.length; i++) {
-          const playlist = playlistsToProcess[i];
-          try {
-            const recentPlaylistItems = await getTracks(playlist.id, accessToken);
-            // Extract actual track objects from playlist items and take the most recent tracks
-            const playlistTracks = recentPlaylistItems
-              .map(item => item.track) // Extract track from playlist item
-              .filter(track => track && track.name && track.artists?.[0]?.name) // Filter out invalid tracks
-              .slice(0, recentPlaylistLimit);
-            
-            console.log(`[Spotify] Found ${playlistTracks.length} recent tracks from playlist ${i + 1}: "${playlist.name}"`);
-            recentTracks.push(...playlistTracks);
-          } catch (error) {
-            console.warn(`[Spotify] Failed to fetch tracks from playlist "${playlist.name}":`, error);
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('[Spotify] Failed to fetch recent playlist tracks:', error);
-    }
-    
-    // Combine all tracks, removing duplicates by track ID
-    const allTracks = [...topTracks];
-    const topTrackIds = new Set(topTracks.map(t => t.id));
-    
-    for (const track of recentTracks) {
-      if (!topTrackIds.has(track.id)) {
-        allTracks.push(track);
+    const playlists = await getPlaylists(accessToken);
+    if (playlists.length > 0) {
+      const playlistsToProcess = playlists.slice(0, 2);
+      for (const playlist of playlistsToProcess) {
+        const items = await getTracks(playlist.id, accessToken);
+        const tracks = items.map(item => item.track).filter(Boolean).slice(0, recentPlaylistLimit);
+        recentTracks.push(...tracks);
       }
     }
-    
-    console.log(`[Spotify] Total tracks to process: ${allTracks.length} (${topTracks.length} top + ${allTracks.length - topTracks.length} recent unique)`);
-    console.log(`[Spotify] Already processed: ${alreadyProcessed.size} tracks`);
+    console.log(`[Spotify] Found ${recentTracks.length} tracks from recent playlists`);
+
+    // Combine all tracks, removing duplicates
+    const allTracks = [...topTracks, ...recentTracks];
+    const uniqueTracks = Array.from(new Map(allTracks.map(t => [t.id, t])).values());
+    console.log(`[Spotify] Total unique tracks to process: ${uniqueTracks.length}`);
     
     let successCount = 0;
     let errorCount = 0;
-    
+
     // Process each track
-    for (const track of allTracks) {
-      if (!track || !track.name || !track.artists?.[0]?.name) {
+    for (const track of uniqueTracks) {
+      if (!track?.name || !track.artists?.[0]?.name) {
         console.warn('[Spotify] Skipping track with missing data');
         continue;
       }
@@ -427,66 +393,49 @@ export async function syncTopTracksLyrics(
       const trackName = track.name;
       const artistName = track.artists[0].name;
       const trackId = track.id;
-      
-      const fileSafeName = `${sanitize(artistName)}-${sanitize(trackName)}`;
-      const fileName = `${userId}/${fileSafeName}.txt`;
-      
-      // Direct match
-      if (alreadyProcessed.has(fileSafeName)) {
-        console.log(`[Spotify] Skip – direct filename match for "${trackName}"`);
+
+      // Skip if song title has profanity
+      if (profanityFilter.isProfane(trackName)) {
+        console.log(`[Spotify] Skipping song with profane title: "${trackName}"`);
         continue;
       }
-
-      // Fuzzy match via longest word
-      let fuzzyMatched = false;
-      for (const existingSlug of alreadyProcessed) {
-        const words = existingSlug.split(/[_-]/).filter(Boolean);
-        if (!words.length) continue;
-        const longest = words.sort((a,b)=>b.length-a.length)[0];
-        if (fileSafeName.includes(longest)) {
-          console.log(`[Spotify] Skip – fuzzy match (longest word "${longest}") between ${fileSafeName} and bucket file ${existingSlug}`);
-          fuzzyMatched = true;
-          break;
-        }
+      
+      if (alreadyProcessed.has(trackId)) {
+        console.log(`[Spotify] Skip – lyrics for "${trackName}" already exist`);
+        continue;
       }
-      if (fuzzyMatched) continue;
       
       try {
         console.log(`[Spotify] Processing: "${trackName}" by ${artistName}`);
         
-        // Fetch lyrics from Genius
         const lyrics = await fetchLyrics(trackName, artistName);
         
-        if (!lyrics) {
-          console.log(`[Spotify] No lyrics found for "${trackName}" – uploading empty placeholder`);
-        }
+        const filePath = `${userId}/${trackId}.txt`;
+        const contentToUpload = lyrics || ''; // Upload empty string for not found
         
-        // Upload to Supabase storage
-        const contentToUpload = lyrics ? lyrics : new Blob([''], { type: 'text/plain' });
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
           .from('lyrics-bucket')
-          .upload(fileName, contentToUpload, { 
+          .upload(filePath, contentToUpload, { 
             upsert: true,
-            contentType: 'text/plain'
-          });
-        
+            contentType: 'text/plain;charset=UTF-8'
+         });
+       
         if (error) {
           console.error(`[Spotify] Failed to upload lyrics for "${trackName}":`, error);
           errorCount++;
         } else {
-          console.log(`[Spotify] Successfully uploaded lyrics for "${trackName}"`);
+          console.log(`[Spotify] Successfully processed lyrics for "${trackName}"`);
           successCount++;
         }
         
-        // Add small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
       } catch (error) {
         console.error(`[Spotify] Error processing "${trackName}":`, error);
         errorCount++;
       }
     }
-    
+
     console.log(`[Spotify] Combined tracks lyrics sync complete. Success: ${successCount}, Errors: ${errorCount}`);
     
   } catch (error) {

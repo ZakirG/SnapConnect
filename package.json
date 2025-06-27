@@ -9,6 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@langchain/openai": "^0.5.16",
+    "@pinecone-database/pinecone": "^6.1.1",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/stack": "^7.4.1",
@@ -25,6 +27,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-web-browser": "~14.2.0",
     "genius-lyrics-api": "^3.2.1",
+    "langchain": "^0.3.29",
     "nativewind": "^4.0.1",
     "openai": "^5.8.1",
     "react": "19.0.0",

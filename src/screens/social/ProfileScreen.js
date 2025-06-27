@@ -112,6 +112,19 @@ const ProfileScreen = ({ navigation }) => {
     try {
       await syncTopTracksLyrics(accessToken, 50, 10, 'medium_term');
       setLyricsStatus('complete');
+
+      // Now, trigger the embedding process via the Edge Function
+      console.log('[ProfileScreen] Lyric sync complete. Starting embedding process via Edge Function...');
+      const { data, error } = await supabase.functions.invoke('upsert-lyrics-to-pinecone', {
+        body: { userId: user.id },
+      });
+
+      if (error) {
+        throw new Error(`Embedding function failed: ${error.message}`);
+      }
+      
+      console.log('[ProfileScreen] Embedding function invoked successfully:', data);
+
       // Update the count after sync
       setTimeout(async () => {
         await checkLyricsStatus();
