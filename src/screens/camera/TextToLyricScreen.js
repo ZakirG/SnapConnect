@@ -130,8 +130,7 @@ const TextToLyricScreen = ({ navigation }) => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background">
         {/* Header */}
         <SafeAreaView edges={['top']} className="p-4">
           <Button
@@ -145,7 +144,12 @@ const TextToLyricScreen = ({ navigation }) => {
         </SafeAreaView>
 
         {/* Main content */}
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, gap: 16 }}>
+        <ScrollView 
+          className="flex-1" 
+          contentContainerStyle={{ padding: 24, gap: 16 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={true}
+        >
           {/* Title and subtitle */}
           <View className="items-center" style={{ gap: 8 }}>
             <Text className="text-3xl font-bold text-gray-800 text-center">What's on your mind?</Text>
@@ -227,8 +231,7 @@ const TextToLyricScreen = ({ navigation }) => {
           )}
         </ScrollView>
       </View>
-    </TouchableWithoutFeedback>
-  );
-};
+    );
+  };
 
 export default TextToLyricScreen; 
