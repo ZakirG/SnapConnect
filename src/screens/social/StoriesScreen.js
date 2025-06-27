@@ -173,6 +173,11 @@ const StoriesScreen = ({ navigation }) => {
               <Ionicons name="camera" size={28} color="white" />
             </TouchableOpacity>
 
+            {/* Text to Lyric */}
+            <TouchableOpacity onPress={() => navigation.navigate('TextToLyric')} className="p-2">
+              <Ionicons name="pencil-outline" size={24} color="white" />
+            </TouchableOpacity>
+
             {/* Friends / Stories (current) */}
             <TouchableOpacity activeOpacity={1} className="p-2">
               <Ionicons name="people" size={24} color="white" />

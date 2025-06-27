@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen, SignupScreen } from './src/screens/auth';
-import { CameraScreen, SnapPreviewScreen, SendToScreen, SnapLyricScreen } from './src/screens/camera';
+import { CameraScreen, SnapPreviewScreen, SendToScreen, SnapLyricScreen, TextToLyricScreen } from './src/screens/camera';
 import { ChatScreen } from './src/screens/chat';
 import ConversationScreen from './src/screens/chat/ConversationScreen';
 import { StoriesScreen, ProfileScreen, AddFriendsScreen, StoryViewerScreen } from './src/screens/social';
@@ -32,6 +32,7 @@ const MainNavigator = () => (
     <MainStack.Screen name="FaceDetect" component={FaceDetectionScreen} />
     <MainStack.Screen name="SnapPreview" component={SnapPreviewScreen} />
     <MainStack.Screen name="SnapLyric" component={SnapLyricScreen} />
+    <MainStack.Screen name="TextToLyric" component={TextToLyricScreen} />
     <MainStack.Screen name="SendTo" component={SendToScreen} />
     <MainStack.Screen name="Chat" component={ChatScreen} />
     <MainStack.Screen name="Stories" component={StoriesScreen} />

@@ -198,6 +198,11 @@ const ChatScreen = ({ navigation }) => {
               <Ionicons name="camera" size={28} color="white" />
             </TouchableOpacity>
 
+            {/* Text to Lyric */}
+            <TouchableOpacity onPress={() => navigation.navigate('TextToLyric')} className="p-2">
+              <Ionicons name="pencil-outline" size={24} color="white" />
+            </TouchableOpacity>
+
             {/* Friends / Stories */}
             <TouchableOpacity onPress={() => navigation.navigate('Stories')} className="p-2">
               <Ionicons name="people-outline" size={24} color="white" />

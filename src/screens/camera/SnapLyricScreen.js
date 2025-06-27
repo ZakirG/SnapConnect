@@ -133,7 +133,7 @@ const SnapLyricScreen = ({ route, navigation }) => {
             </View>
           ) : (
             <View className="w-full items-center" style={{ gap: 16 }}>
-              <Text className="text-2xl font-bold">Your SnapLyric</Text>
+              <Text className="text-2xl font-bold">Your SnapLyric 🎶🎉</Text>
               <TextInput
                 value={snapLyric}
                 onChangeText={setSnapLyric}
