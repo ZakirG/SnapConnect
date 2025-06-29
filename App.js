@@ -2,7 +2,7 @@ import './global.css';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { LoginScreen, SignupScreen } from './src/screens/auth';
+import { LoginScreen, SignupScreen, WelcomeScreen } from './src/screens/auth';
 import { CameraScreen, SnapPreviewScreen, SendToScreen, SnapLyricScreen, TextToLyricScreen } from './src/screens/camera';
 import { ChatScreen } from './src/screens/chat';
 import ConversationScreen from './src/screens/chat/ConversationScreen';
@@ -20,9 +20,10 @@ const AuthStack = createStackNavigator();
 const MainStack = createStackNavigator();
 
 const AuthNavigator = () => (
-  <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-    <AuthStack.Screen name="Login" component={LoginScreen} />
+  <AuthStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Welcome">
+    <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
     <AuthStack.Screen name="Signup" component={SignupScreen} />
+    <AuthStack.Screen name="Login" component={LoginScreen} />
   </AuthStack.Navigator>
 );
 
