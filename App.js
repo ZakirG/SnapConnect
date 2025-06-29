@@ -14,7 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { getTopTracks, syncTopTracksLyrics } from './src/services/spotify';
 import { useUserStore as useUserStoreForTest } from './src/store/user';
-import { hydrateSpotifyTokens } from './src/store/user';
+import { hydrateSpotifyTokens, hydrateTourStatus } from './src/store/user';
 
 const AuthStack = createStackNavigator();
 const MainStack = createStackNavigator();
@@ -73,8 +73,9 @@ export default function App() {
       setUser(session?.user ?? null);
     });
 
-    // hydrate spotify tokens
+    // hydrate spotify tokens and tour status
     hydrateSpotifyTokens(useUserStore).catch(() => {});
+    hydrateTourStatus(useUserStore).catch(() => {});
 
     return () => subscription.unsubscribe();
   }, [setUser]);

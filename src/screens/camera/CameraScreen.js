@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Image, Dimensions, ScrollView } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
+import { GuidedTour } from '../../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useUserStore } from '../../store/user';
+import { useUserStore, hydrateTourStatus } from '../../store/user';
 
 /**
  * A screen that displays the camera view, allowing users to take photos.
@@ -19,7 +20,8 @@ const CameraScreen = ({ navigation }) => {
   const cameraRef = useRef(null);
   const [faces, setFaces] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('none'); // 'none' | 'sunglasses' | 'horns' | 'sunglasses2'
-  const { user } = useUserStore();
+  const [showTour, setShowTour] = useState(false);
+  const { user, hasCompletedInitialTour, setTourCompleted } = useUserStore();
 
   // Verbose logging helper
   const log = (...args) => console.log('[CameraScreen]', ...args);
@@ -39,12 +41,26 @@ const CameraScreen = ({ navigation }) => {
         const { status: micStatus } = await Camera.requestMicrophonePermissionsAsync();
         console.log('Permission status — camera:', camStatus, 'microphone:', micStatus);
         setHasPermission(camStatus === 'granted' && micStatus === 'granted');
+        
+        // Hydrate tour completion status
+        await hydrateTourStatus(useUserStore);
       } catch (err) {
         console.warn('Permission request error', err);
         setHasPermission(false);
       }
     })();
   }, []);
+
+  // Check if tour should be shown when user or tour status changes
+  useEffect(() => {
+    if (user && /* !hasCompletedInitialTour && */ hasPermission) {
+      // Show tour after a short delay to ensure camera is ready
+      const timer = setTimeout(() => {
+        setShowTour(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, hasCompletedInitialTour, hasPermission]);
 
   const toggleCameraType = () => {
     setType(current => (current === 'back' ? 'front' : 'back'));
@@ -71,6 +87,14 @@ const CameraScreen = ({ navigation }) => {
     setFaces([]);
     log('filter pressed →', key);
     setSelectedFilter(key);
+  };
+
+  /**
+   * Handles completion of the initial guided tour
+   */
+  const handleTourComplete = () => {
+    setShowTour(false);
+    setTourCompleted();
   };
 
   // Heartbeat – logs every second so we know detector flag status
@@ -374,6 +398,13 @@ const CameraScreen = ({ navigation }) => {
 
 
       </CameraView>
+
+      {/* Guided Tour for new users */}
+      <GuidedTour
+        visible={showTour}
+        description="Take a picture to make your first SnapLyric."
+        onNext={handleTourComplete}
+      />
     </View>
   );
 };

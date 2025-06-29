@@ -16,6 +16,8 @@ interface UserState {
   spotifyRefreshToken: string | null;
   spotifyExpires: number | null; // Unix epoch millis when access token expires
   setSpotifyTokens: (accessToken: string, refreshToken: string, expiresIn: number) => void;
+  hasCompletedInitialTour: boolean;
+  setTourCompleted: () => void;
 }
 
 /**
@@ -36,12 +38,14 @@ export const useUserStore = create<UserState>((set) => ({
   setUser: (user) => set({ user, isLoggedIn: !!user }),
   logout: () => {
     deleteSecure('spotify_tokens').catch(() => {});
+    deleteSecure('tour_completed').catch(() => {});
     set({
       user: null,
       isLoggedIn: false,
       spotifyAccessToken: null,
       spotifyRefreshToken: null,
       spotifyExpires: null,
+      hasCompletedInitialTour: false,
     });
   },
   spotifyAccessToken: null,
@@ -59,6 +63,11 @@ export const useUserStore = create<UserState>((set) => ({
       spotifyRefreshToken: refreshToken,
       spotifyExpires: payload.expiresAt,
     });
+  },
+  hasCompletedInitialTour: false,
+  setTourCompleted: () => {
+    saveSecure('tour_completed', 'true').catch(() => {});
+    set({ hasCompletedInitialTour: true });
   },
 })) as unknown as UserState & { hydrateSpotifyTokens: () => Promise<void> };
 
@@ -87,6 +96,16 @@ export async function hydrateSpotifyTokens(store: any) {
           refreshed.expiresIn,
         );
       }
+    }
+  } catch {}
+}
+
+// Tour completion hydration helper
+export async function hydrateTourStatus(store: any) {
+  try {
+    const tourCompleted = await loadSecure('tour_completed');
+    if (tourCompleted === 'true') {
+      store.setState({ hasCompletedInitialTour: true });
     }
   } catch {}
 } 
