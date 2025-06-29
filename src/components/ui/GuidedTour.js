@@ -12,8 +12,7 @@
  * @returns {React.ReactElement|null}
  */
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, Modal, Image } from 'react-native';
 import { Card } from '../neumorphic';
 
 const GuidedTour = ({ 
@@ -85,7 +84,11 @@ const GuidedTour = ({
 
         {/* Arrow pointing down to capture button */}
         <View className="absolute bottom-60 left-1/2 -ml-3">
-          <Ionicons name="arrow-down" size={24} color="white" />
+          <Image 
+            source={require('../../../assets/down-arrow.png')}
+            style={{ width: 48, height: 48, position: 'relative', left: -15, top: 3 }}
+            resizeMode="contain"
+          />
         </View>
       </View>
     </Modal>
