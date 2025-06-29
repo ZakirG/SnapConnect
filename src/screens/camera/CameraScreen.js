@@ -21,6 +21,7 @@ const CameraScreen = ({ navigation }) => {
   const [faces, setFaces] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('none'); // 'none' | 'sunglasses' | 'horns' | 'sunglasses2'
   const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(1);
   const { user, hasCompletedInitialTour, setTourCompleted } = useUserStore();
 
   // Verbose logging helper
@@ -56,6 +57,7 @@ const CameraScreen = ({ navigation }) => {
     if (user && /* !hasCompletedInitialTour && */ hasPermission) {
       // Show tour after a short delay to ensure camera is ready
       const timer = setTimeout(() => {
+        setTourStep(1); // Ensure tour starts at step 1
         setShowTour(true);
       }, 1000);
       return () => clearTimeout(timer);
@@ -90,11 +92,49 @@ const CameraScreen = ({ navigation }) => {
   };
 
   /**
-   * Handles completion of the initial guided tour
+   * Handles progression through the guided tour steps
    */
-  const handleTourComplete = () => {
-    setShowTour(false);
-    setTourCompleted();
+  const handleTourNext = () => {
+    if (tourStep === 1) {
+      // Move to step 2
+      setTourStep(2);
+    } else if (tourStep === 2) {
+      // Move to step 3
+      setTourStep(3);
+    } else {
+      // Complete the tour
+      setShowTour(false);
+      setTourCompleted();
+      setTourStep(1); // Reset for next time
+    }
+  };
+
+  /**
+   * Gets the tour content based on current step
+   */
+  const getTourContent = () => {
+    switch (tourStep) {
+      case 1:
+        return {
+          description: "First connect your Spotify to get started.",
+          position: "top-left"
+        };
+      case 2:
+        return {
+          description: "Then you can take a picture to make your first SnapLyric.",
+          position: "center-above"
+        };
+      case 3:
+        return {
+          description: "You can also tap the pencil icon to turn messy thoughts into clever tweets that quote song lyrics.",
+          position: "bottom-right"
+        };
+      default:
+        return {
+          description: "Connect your Spotify to get started.",
+          position: "top-left"
+        };
+    }
   };
 
   // Heartbeat – logs every second so we know detector flag status
@@ -402,8 +442,9 @@ const CameraScreen = ({ navigation }) => {
       {/* Guided Tour for new users */}
       <GuidedTour
         visible={showTour}
-        description="Take a picture to make your first SnapLyric."
-        onNext={handleTourComplete}
+        description={getTourContent().description}
+        position={getTourContent().position}
+        onNext={handleTourNext}
       />
     </View>
   );

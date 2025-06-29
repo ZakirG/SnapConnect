@@ -6,6 +6,7 @@
  * @param {boolean} props.visible - Whether the tour step is currently visible.
  * @param {string} props.title - The title text for the tour step.
  * @param {string} props.description - The description text for the tour step.
+ * @param {string} props.position - Position of the tour box ('center-above', 'bottom-right').
  * @param {function} props.onNext - Callback function when Next button is pressed.
  * @param {function} props.onSkip - Optional callback function when Skip button is pressed.
  * @param {boolean} props.showSkip - Whether to show the skip button.
@@ -18,19 +19,56 @@ import { Card } from '../neumorphic';
 const GuidedTour = ({ 
   visible, 
   title, 
-  description, 
+  description,
+  position = 'center-above',
   onNext, 
   onSkip,
   showSkip = false 
 }) => {
   if (!visible) return null;
 
+  // Position configurations for different tour steps
+  const getPositioning = () => {
+    switch (position) {
+      case 'top-left':
+        return {
+          box: 'absolute top-48 left-4',
+          arrow: 'absolute top-32 left-6',
+          arrowStyle: { width: 48, height: 48, position: 'relative', left: 0, top: 0 },
+          arrowImage: require('../../../assets/up-arrow.png')
+        };
+      case 'center-above':
+        return {
+          box: 'absolute bottom-72 left-1/2 -ml-[150px]',
+          arrow: 'absolute bottom-60 left-1/2 -ml-3',
+          arrowStyle: { width: 48, height: 48, position: 'relative', left: -15, top: 3 },
+          arrowImage: require('../../../assets/down-arrow.png')
+        };
+      case 'bottom-right':
+        return {
+          box: 'absolute bottom-36 right-4',
+          arrow: 'absolute bottom-24 left-72 -ml-6',
+          arrowStyle: { width: 48, height: 48, position: 'relative', left: 0, top: 0 },
+          arrowImage: require('../../../assets/down-arrow.png')
+        };
+      default:
+        return {
+          box: 'absolute bottom-72 left-1/2 -ml-[150px]',
+          arrow: 'absolute bottom-60 left-1/2 -ml-3',
+          arrowStyle: { width: 48, height: 48, position: 'relative', left: -15, top: 3 },
+          arrowImage: require('../../../assets/down-arrow.png')
+        };
+    }
+  };
+
+  const positioning = getPositioning();
+
   return (
     <Modal transparent visible={visible} animationType="fade">
       {/* Semi-transparent overlay */}
       <View className="flex-1 bg-black/50">
-        {/* Tour box positioned above capture button */}
-        <View className="absolute bottom-72 left-1/2 -ml-[150px]">
+        {/* Tour box */}
+        <View className={positioning.box}>
           <Card style={{ width: 300, padding: 24 }}>
             {title && (
               <Text className="text-xl font-bold text-gray-900 mb-3 text-center">
@@ -82,11 +120,11 @@ const GuidedTour = ({
           </Card>
         </View>
 
-        {/* Arrow pointing down to capture button */}
-        <View className="absolute bottom-60 left-1/2 -ml-3">
+        {/* Arrow pointing to target */}
+        <View className={positioning.arrow}>
           <Image 
-            source={require('../../../assets/down-arrow.png')}
-            style={{ width: 48, height: 48, position: 'relative', left: -15, top: 3 }}
+            source={positioning.arrowImage}
+            style={positioning.arrowStyle}
             resizeMode="contain"
           />
         </View>
