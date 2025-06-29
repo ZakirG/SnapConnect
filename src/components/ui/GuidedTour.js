@@ -127,6 +127,20 @@ const GuidedTour = ({
             style={positioning.arrowStyle}
             resizeMode="contain"
           />
+          {/* Orange ring for step 2 (pencil icon step) */}
+          {position === 'bottom-right' && (
+            <View 
+              className="absolute top-12 left-3"
+              style={{
+                width: 48,
+                height: 48,
+                borderWidth: 3,
+                borderColor: '#ffc400',
+                borderRadius: 24,
+                backgroundColor: 'transparent',
+              }}
+            />
+          )}
         </View>
       </View>
     </Modal>
