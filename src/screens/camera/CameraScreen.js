@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image, Dimensions, ScrollView } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -193,40 +193,56 @@ const CameraScreen = ({ navigation }) => {
           </Button>
         </SafeAreaView>
 
-        {/* Capture button and filter selector */}
-        <View className="absolute bottom-36 w-full items-center">
-          <View className="flex-row items-center space-x-6">
-            {/* Filter selector buttons */}
-            <View className="flex-row space-x-3">
-              {FILTERS.map((f) => (
-                <TouchableOpacity
-                  key={f.key}
-                  onPress={() => selectFilter(f.key)}
-                  activeOpacity={0.8}
-                  className={`w-[46px] h-[46px] rounded-full border-2 ${
-                    selectedFilter === f.key ? 'border-yellow-400' : 'border-white/70'
-                  } bg-black/30 items-center justify-center`}
-                >
-                  {f.key === 'none' ? (
-                    <Ionicons name="close" size={20} color="white" />
-                  ) : (
-                    <Image source={f.src} style={{ width: 28, height: 14, resizeMode: 'contain' }} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+        {/* Capture button - absolutely centered */}
+        <View className="absolute bottom-36 left-1/2 -ml-[42.5px]">
+          <TouchableOpacity
+            onPress={takePicture}
+            onLongPress={startRecording}
+            onPressOut={stopRecording}
+            activeOpacity={0.8}
+            className="w-[85px] h-[85px] items-center justify-center"
+          >
+            {/* Ring design with transparent center like Snapchat */}
+            <View className="w-[80px] h-[80px] rounded-full border-[6px] border-white bg-transparent" />
+          </TouchableOpacity>
+        </View>
 
-            {/* Capture button */}
+        {/* Filter selector buttons - to the right of center, vertically aligned */}
+        <View className="absolute bottom-36 left-1/2 ml-12 h-[85px] justify-center">
+          <View className="flex-row items-center">
+            {/* Fixed "none" filter (X button) */}
             <TouchableOpacity
-              onPress={takePicture}
-              onLongPress={startRecording}
-              onPressOut={stopRecording}
+              onPress={() => selectFilter('none')}
               activeOpacity={0.8}
-              className="w-[70px] h-[70px] items-center justify-center"
+              className={`w-[46px] h-[46px] rounded-full border-2 ${
+                selectedFilter === 'none' ? 'border-yellow-400' : 'border-white/70'
+              } bg-black/30 items-center justify-center mr-3`}
             >
-              {/* Ring design with transparent center like Snapchat */}
-              <View className="w-[66px] h-[66px] rounded-full border-[6px] border-white bg-transparent" />
+              <Ionicons name="close" size={20} color="white" />
             </TouchableOpacity>
+
+            {/* Scrollable AR filters */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 16 }}
+              style={{ maxWidth: 200 }}
+            >
+              <View className="flex-row space-x-3">
+                {FILTERS.filter(f => f.key !== 'none').map((f) => (
+                  <TouchableOpacity
+                    key={f.key}
+                    onPress={() => selectFilter(f.key)}
+                    activeOpacity={0.8}
+                    className={`w-[46px] h-[46px] rounded-full border-2 ${
+                      selectedFilter === f.key ? 'border-yellow-400' : 'border-white/70'
+                    } bg-black/30 items-center justify-center`}
+                  >
+                    <Image source={f.src} style={{ width: 28, height: 14, resizeMode: 'contain' }} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
 

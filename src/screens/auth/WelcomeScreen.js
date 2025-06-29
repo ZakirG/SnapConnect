@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import { Card, Button } from '../../components/neumorphic';
+import { Card, CustomButton } from '../../components/neumorphic';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
@@ -86,7 +86,7 @@ const WelcomeScreen = ({ navigation }) => {
                     {/* Features Section */}
           <View className="w-full mb-12 px-2">
             <Text className="text-2xl font-bold text-gray-900 mb-2 text-center">Welcome to SnapLyric!</Text>
-            <Text className="text-2xl font-bold text-gray-900 mb-6 text-center">Here's how it works:</Text>
+            <Text className="text-2xl font-bold text-gray-900 mb-6 text-center">How it works:</Text>
              
             {/* Feature Card with Internal Navigation */}
             <PanGestureHandler onHandlerStateChange={handleSwipeGesture}>
@@ -138,12 +138,9 @@ const WelcomeScreen = ({ navigation }) => {
 
           {/* Call to Action */}
           <View className="w-full max-w-sm px-4">
-            <Button
-              title="Let's go!"
-              size="large"
-              variant="primary"
+            <CustomButton
+              title="LET'S GO!"
               onPress={handleGetStarted}
-              style={{ width: '100%', marginBottom: 20 }}
             />
             
             <Text className="text-center text-gray-500">
