@@ -213,7 +213,7 @@ const SignupScreen = ({ navigation }) => {
         />
         <Text className="text-center">
           Already have an account?{' '}
-          <Text className="text-accent-primary" onPress={() => navigation.navigate('Login')}>
+          <Text className="text-blue-600" onPress={() => navigation.navigate('Login')}>
             Login
           </Text>
         </Text>

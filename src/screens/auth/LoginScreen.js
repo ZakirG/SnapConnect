@@ -135,7 +135,7 @@ const LoginScreen = ({ navigation }) => {
           />
           <Text className="text-center">
             Don't have an account?{' '}
-            <Text className="text-accent-primary" onPress={() => navigation.navigate('Signup')}>
+            <Text className="text-blue-600" onPress={() => navigation.navigate('Signup')}>
               Sign Up
             </Text>
           </Text>
