@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { Card, Input, Button } from '../../components/neumorphic';
+import { View, Text, Alert, Image } from 'react-native';
+import { Card, Input, CustomButton } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -100,8 +100,12 @@ const LoginScreen = ({ navigation }) => {
     <View className="flex-1 bg-background">
       {/* Central content */}
       <View className="flex-1 justify-center items-center px-4">
-        {/* App Title */}
-        <Text className="text-4xl font-extrabold text-gray-900 mb-6">SnapConnect</Text>
+        {/* App Logo */}
+        <Image 
+          source={require('../../../assets/snaplyric-logo.png')}
+          style={{ width: 200, height: 80, marginBottom: 32 }}
+          resizeMode="contain"
+        />
 
         {/* Login Card */}
         <Card>
@@ -125,13 +129,11 @@ const LoginScreen = ({ navigation }) => {
             autoComplete="current-password"
             textContentType="password"
           />
-          <Button
-            title={isLoading ? 'Logging in...' : 'Login'}
-            size="large"
-            variant="primary"
+          <CustomButton
+            title="LOGIN"
+            loadingTitle="LOGGING IN..."
             onPress={handleLogin}
-            disabled={isLoading}
-            style={{ marginBottom: 20, width: '100%' }}
+            loading={isLoading}
           />
           <Text className="text-center">
             Don't have an account?{' '}

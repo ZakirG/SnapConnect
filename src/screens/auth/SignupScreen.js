@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
-import { Card, Input, Button } from '../../components/neumorphic';
+import { View, Text, Alert, Image } from 'react-native';
+import { Card, Input, CustomButton } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 
 /**
@@ -162,6 +162,13 @@ const SignupScreen = ({ navigation }) => {
 
   return (
     <View className="flex-1 justify-center items-center bg-background p-4">
+      {/* App Logo */}
+      <Image 
+        source={require('../../../assets/snaplyric-logo.png')}
+        style={{ width: 200, height: 80, marginBottom: 32 }}
+        resizeMode="contain"
+      />
+      
       <Card>
         <Text className="text-2xl font-bold mb-8 text-center">Sign Up</Text>
         <Input
@@ -203,13 +210,11 @@ const SignupScreen = ({ navigation }) => {
           autoComplete="new-password"
           textContentType="newPassword"
         />
-        <Button
-          title={isLoading ? 'Creating Account...' : 'Sign Up'}
-          size="large"
-          variant="primary"
+        <CustomButton
+          title="SIGN UP"
+          loadingTitle="CREATING ACCOUNT..."
           onPress={handleSignup}
-          disabled={isLoading}
-          style={{ marginBottom: 20, width: '100%' }}
+          loading={isLoading}
         />
         <Text className="text-center">
           Already have an account?{' '}
