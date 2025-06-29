@@ -22,7 +22,7 @@ const CameraScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState('none'); // 'none' | 'sunglasses' | 'horns' | 'sunglasses2'
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(1);
-  const { user, hasCompletedInitialTour, setTourCompleted } = useUserStore();
+  const { user, hasCompletedInitialTour, setTourCompleted, spotifyAccessToken } = useUserStore();
 
   // Verbose logging helper
   const log = (...args) => console.log('[CameraScreen]', ...args);
@@ -116,23 +116,23 @@ const CameraScreen = ({ navigation }) => {
     switch (tourStep) {
       case 1:
         return {
-          description: "First connect your Spotify to get started.",
-          position: "top-left"
+          description: "Once your Spotify is connected, you can take a picture to make your first SnapLyric.",
+          position: "center-above"
         };
       case 2:
         return {
-          description: "Then you can take a picture to make your first SnapLyric.",
-          position: "center-above"
+          description: "You can tap the pencil icon to turn messy thoughts into clever tweets that quote song lyrics.",
+          position: "bottom-right"
         };
       case 3:
         return {
-          description: "You can also tap the pencil icon to turn messy thoughts into clever tweets that quote song lyrics.",
-          position: "bottom-right"
+          description: "Let's start by connecting your Spotify to enable smart lyric retrieval.",
+          position: "top-left"
         };
       default:
         return {
-          description: "Connect your Spotify to get started.",
-          position: "top-left"
+          description: "Take a picture to make your first SnapLyric.",
+          position: "center-above"
         };
     }
   };
@@ -247,14 +247,32 @@ const CameraScreen = ({ navigation }) => {
 
         {/* Top-left profile button */}
         <SafeAreaView edges={['top']} className="absolute top-0 left-0 z-10 p-4">
-          <Button
-            variant="circular"
-            size="medium"
-            onPress={() => navigation.navigate('Profile')}
-            style={{ width: 48, height: 48 }}
-          >
-            <Ionicons name="person-outline" size={24} color="#374151" />
-          </Button>
+          {!spotifyAccessToken ? (
+            <Button
+              variant="primary"
+              size="medium"
+              onPress={() => navigation.navigate('Profile')}
+              style={{ 
+                maxWidth: 200,
+                minWidth: 180
+              }}
+            >
+              <Ionicons name="person-outline" size={24} color="#374151" />
+              <Text className="text-gray-700 font-semibold text-xs text-center">
+                
+                Connect your Spotify to use SnapLyric
+              </Text>
+            </Button>
+          ) : (
+            <Button
+              variant="circular"
+              size="medium"
+              onPress={() => navigation.navigate('Profile')}
+              style={{ width: 48, height: 48 }}
+            >
+              <Ionicons name="person-outline" size={24} color="#374151" />
+            </Button>
+          )}
         </SafeAreaView>
 
         {/* Capture button - absolutely centered */}
@@ -268,6 +286,10 @@ const CameraScreen = ({ navigation }) => {
           >
             {/* Ring design with transparent center like Snapchat */}
             <View className="w-[80px] h-[80px] rounded-full border-[6px] border-white bg-transparent" />
+            {/* Camera icon in the center */}
+            <View className="absolute">
+              <Ionicons name="camera" size={28} color="white" />
+            </View>
           </TouchableOpacity>
         </View>
 
