@@ -127,6 +127,23 @@ const GuidedTour = ({
             style={positioning.arrowStyle}
             resizeMode="contain"
           />
+          {/* Orange ring for step 1 (capture button step) */}
+          {position === 'center-above' && (
+            <View 
+              className="absolute"
+              style={{
+                width: 64,
+                height: 64,
+                top: 60,
+                left: -20,
+                borderWidth: 3,
+                borderColor: '#ffc400',
+                borderRadius: '50%',
+                backgroundColor: 'transparent',
+              }}
+            />
+          )}
+          
           {/* Orange ring for step 2 (pencil icon step) */}
           {position === 'bottom-right' && (
             <View 

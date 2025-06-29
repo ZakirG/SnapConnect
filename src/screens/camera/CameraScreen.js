@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Image, Dimensions, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Image, Dimensions, ScrollView, Alert } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import { Button } from '../../components/neumorphic';
 import { GuidedTour } from '../../components/ui';
@@ -54,7 +54,7 @@ const CameraScreen = ({ navigation }) => {
 
   // Check if tour should be shown when user or tour status changes
   useEffect(() => {
-    if (user && /* !hasCompletedInitialTour && */ hasPermission) {
+    if (user && !hasCompletedInitialTour && hasPermission) {
       // Show tour after a short delay to ensure camera is ready
       const timer = setTimeout(() => {
         setTourStep(1); // Ensure tour starts at step 1
@@ -149,6 +149,16 @@ const CameraScreen = ({ navigation }) => {
   }, [selectedFilter, faces]);
 
   const takePicture = async () => {
+    // Check if Spotify is connected first
+    if (!spotifyAccessToken) {
+      Alert.alert(
+        'Spotify Required',
+        'Connect your Spotify first to make a SnapLyric',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (cameraRef.current && !isRecording) {
       const photo = await cameraRef.current.takePictureAsync();
       navigation.navigate('SnapPreview', {
@@ -164,6 +174,16 @@ const CameraScreen = ({ navigation }) => {
    * to the preview screen.
    */
   const startRecording = async () => {
+    // Check if Spotify is connected first
+    if (!spotifyAccessToken) {
+      Alert.alert(
+        'Spotify Required',
+        'Connect your Spotify first to make a SnapLyric',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (cameraRef.current && !isRecording) {
       try {
         setIsRecording(true);
@@ -283,12 +303,22 @@ const CameraScreen = ({ navigation }) => {
             onPressOut={stopRecording}
             activeOpacity={0.8}
             className="w-[85px] h-[85px] items-center justify-center"
+            style={{ opacity: spotifyAccessToken ? 1 : 0.5 }}
           >
             {/* Ring design with transparent center like Snapchat */}
-            <View className="w-[80px] h-[80px] rounded-full border-[6px] border-white bg-transparent" />
+            <View 
+              className="w-[80px] h-[80px] rounded-full border-[6px] bg-transparent"
+              style={{ 
+                borderColor: spotifyAccessToken ? 'white' : '#999'
+              }}
+            />
             {/* Camera icon in the center */}
             <View className="absolute">
-              <Ionicons name="camera" size={28} color="white" />
+              <Ionicons 
+                name="camera" 
+                size={28} 
+                color={spotifyAccessToken ? 'white' : '#999'} 
+              />
             </View>
           </TouchableOpacity>
         </View>

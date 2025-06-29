@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, Image } from 'react-native';
+import { View, Text, Alert, Image, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Card, Input, CustomButton } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 
@@ -161,69 +161,71 @@ const SignupScreen = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 justify-center items-center bg-background p-4">
-      {/* App Logo */}
-      <Image 
-        source={require('../../../assets/snaplyric-logo.png')}
-        style={{ width: 200, height: 80, marginBottom: 32 }}
-        resizeMode="contain"
-      />
-      
-      <Card>
-        <Text className="text-2xl font-bold mb-8 text-center">Sign Up</Text>
-        <Input
-          placeholder="Email"
-          style={{ marginBottom: 20 }}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-          autoCorrect={false}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 justify-center items-center bg-background p-4">
+        {/* App Logo */}
+        <Image 
+          source={require('../../../assets/snaplyric-logo.png')}
+          style={{ width: 200, height: 80, marginBottom: 32 }}
+          resizeMode="contain"
         />
-        <Input
-          placeholder="Username"
-          style={{ marginBottom: 20 }}
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoComplete="username"
-          textContentType="username"
-          autoCorrect={false}
-        />
-        <Input
-          placeholder="Password"
-          secureTextEntry
-          style={{ marginBottom: 20 }}
-          value={password}
-          onChangeText={setPassword}
-          autoComplete="new-password"
-          textContentType="newPassword"
-        />
-        <Input
-          placeholder="Confirm Password"
-          secureTextEntry
-          style={{ marginBottom: 20 }}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          autoComplete="new-password"
-          textContentType="newPassword"
-        />
-        <CustomButton
-          title="SIGN UP"
-          loadingTitle="CREATING ACCOUNT..."
-          onPress={handleSignup}
-          loading={isLoading}
-        />
-        <Text className="text-center">
-          Already have an account?{' '}
-          <Text className="text-blue-600" onPress={() => navigation.navigate('Login')}>
-            Login
+        
+        <Card>
+          <Text className="text-2xl font-bold mb-8 text-center">Sign Up</Text>
+          <Input
+            placeholder="Email"
+            style={{ marginBottom: 20 }}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCorrect={false}
+          />
+          <Input
+            placeholder="Username"
+            style={{ marginBottom: 20 }}
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoComplete="username"
+            textContentType="username"
+            autoCorrect={false}
+          />
+          <Input
+            placeholder="Password"
+            secureTextEntry
+            style={{ marginBottom: 20 }}
+            value={password}
+            onChangeText={setPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
+          />
+          <Input
+            placeholder="Confirm Password"
+            secureTextEntry
+            style={{ marginBottom: 20 }}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            autoComplete="new-password"
+            textContentType="newPassword"
+          />
+          <CustomButton
+            title="SIGN UP"
+            loadingTitle="CREATING ACCOUNT..."
+            onPress={handleSignup}
+            loading={isLoading}
+          />
+          <Text className="text-center">
+            Already have an account?{' '}
+            <Text className="text-blue-600" onPress={() => navigation.navigate('Login')}>
+              Login
+            </Text>
           </Text>
-        </Text>
-      </Card>
-    </View>
+        </Card>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

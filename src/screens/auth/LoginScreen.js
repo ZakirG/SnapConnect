@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, Image } from 'react-native';
+import { View, Text, Alert, Image, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Card, Input, CustomButton } from '../../components/neumorphic';
 import { supabase } from '../../services/supabase/config';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -97,53 +97,55 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Central content */}
-      <View className="flex-1 justify-center items-center px-4">
-        {/* App Logo */}
-        <Image 
-          source={require('../../../assets/snaplyric-logo.png')}
-          style={{ width: 200, height: 80, marginBottom: 32 }}
-          resizeMode="contain"
-        />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View className="flex-1 bg-background">
+        {/* Central content */}
+        <View className="flex-1 justify-center items-center px-4">
+          {/* App Logo */}
+          <Image 
+            source={require('../../../assets/snaplyric-logo.png')}
+            style={{ width: 200, height: 80, marginBottom: 32 }}
+            resizeMode="contain"
+          />
 
-        {/* Login Card */}
-        <Card>
-          <Input
-            placeholder="Email"
-            style={{ marginBottom: 20 }}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            textContentType="emailAddress"
-            autoCorrect={false}
-          />
-          <Input
-            placeholder="Password"
-            secureTextEntry
-            style={{ marginBottom: 20 }}
-            value={password}
-            onChangeText={setPassword}
-            autoComplete="current-password"
-            textContentType="password"
-          />
-          <CustomButton
-            title="LOGIN"
-            loadingTitle="LOGGING IN..."
-            onPress={handleLogin}
-            loading={isLoading}
-          />
-          <Text className="text-center">
-            Don't have an account?{' '}
-            <Text className="text-blue-600" onPress={() => navigation.navigate('Signup')}>
-              Sign Up
+          {/* Login Card */}
+          <Card>
+            <Input
+              placeholder="Email"
+              style={{ marginBottom: 20 }}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              autoCorrect={false}
+            />
+            <Input
+              placeholder="Password"
+              secureTextEntry
+              style={{ marginBottom: 20 }}
+              value={password}
+              onChangeText={setPassword}
+              autoComplete="current-password"
+              textContentType="password"
+            />
+            <CustomButton
+              title="LOGIN"
+              loadingTitle="LOGGING IN..."
+              onPress={handleLogin}
+              loading={isLoading}
+            />
+            <Text className="text-center">
+              Don't have an account?{' '}
+              <Text className="text-blue-600" onPress={() => navigation.navigate('Signup')}>
+                Sign Up
+              </Text>
             </Text>
-          </Text>
-        </Card>
+          </Card>
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 
